@@ -24,7 +24,13 @@ class Point2D {
 }
 
 class State {
-    constructor(public snake: Point2D[], public candy: Point2D = null) {}
+    constructor(public snake: Point2D[], public candy: Point2D = null, public status: GameState = GameState.loaded) {}
+}
+
+enum GameState {
+    loaded = 0,
+    running = 1,
+    gameover = 2
 }
 
 enum KeyCodes {
@@ -44,15 +50,27 @@ class Snake implements Game {
     start(canvas:HTMLCanvasElement):void {
         var ctx = canvas.getContext("2d");
 
-        var directions = this.keyEvent.filter(ke => !!KeyCodes[ke.keyCode]).map(ke => toDirection(ke.keyCode)).filter(d => d.length == 2);
+        var directions = this.keyEvent
+            .filter(ke => !!KeyCodes[ke.keyCode])
+            .map(ke => toDirection(ke.keyCode))
+            .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])
+            .filter(d => d.length == 2)
+            .startWith([]);
 
-        Rx.Observable
+        var restart = this.keyEvent
+            .filter(ke => ke.keyCode == 13).select(_ => true);
+
+        var game = Rx.Observable
             .interval(100)
             .combineLatest(directions, (t, d) => [t, d])
             .distinctUntilChanged(t => t[0])
             .map(t => t[1])
             .scan(new State([new Point2D(0,0)], Point2D.random()), (s: State, d: number[]) => eat(move(s,d)))
-            .subscribe(draw.bind(this, ctx));
+        
+        restart.startWith(true)
+            .select(_ => game)    
+            .switch()
+            .subscribe(draw.bind(this, ctx))
     }
 
 }
@@ -71,6 +89,21 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter/2, 0, 2 * Math.PI, false);
     ctx.fillStyle = 'orange';
     ctx.fill();
+
+    if(state.status == GameState.loaded){
+        ctx.font = "40px Arial";
+        var m = ctx.measureText("Press any arrow/wasd key to start");
+        ctx.fillText("Press any arrow/wasd key to start", 800 / 2 - m.width / 2, 600 / 2);
+    }
+
+    if(state.status == GameState.gameover){
+        ctx.font = "60px Arial";
+        var m = ctx.measureText("GAME OVER");
+        ctx.fillText("GAME OVER", 800 / 2 - m.width / 2, 600 / 2 - 30);
+        ctx.font = "40px Arial";
+        var m = ctx.measureText("Press enter to restart");
+        ctx.fillText("Press enter to restart", 800 / 2 - m.width / 2, 600 / 2 + 20);
+    }
 }
 
 function eat(state: State): State {
@@ -78,14 +111,29 @@ function eat(state: State): State {
         console.log("Eaten!");
         return new State(
             state.snake.concat(state.snake[state.snake.length-1]), 
-            Point2D.random()
+            Point2D.random(),
+            state.status
         );
     }
     return state;
 }
 
 function move(state: State, direction: number[]): State {
-    return new State([state.snake[0].move(direction).loopRound(800/diameter,600/diameter)].concat(state.snake.slice(0, -1)), state.candy);
+    if(state.status == GameState.running || state.status == GameState.loaded && direction.length != 0){
+        // Move
+        var newPos = state.snake[0].move(direction).loopRound(800/diameter,600/diameter);
+        // Possibly die
+        if(state.snake.slice(0, -1).reduce((p, c) => p || newPos.equals(c), false)){
+            return new State(state.snake, state.candy, GameState.gameover);
+        }
+        // Moved state
+        return new State(
+            [newPos].concat(state.snake.slice(0, -1)), 
+            state.candy,
+            GameState.running
+        );
+    }
+    return state;
 }
 
 function toDirection(keyCode: number){
