@@ -1,7 +1,9 @@
 /// <reference path="../ts/jquery/jquery.d.ts" />
 /// <reference path="../ts/rx/rx.all.d.ts" />
 /// <reference path="../ts/rx-jquery/rx.jquery.d.ts" />
-var diameter = 20;
+var diameter = 20,
+    screenW = 800,
+    screenH = 600;
 
 interface Game {
     start(canvas: HTMLCanvasElement): void
@@ -19,12 +21,15 @@ class Point2D {
         return this.x == other.x && this.y == other.y;
     }
     static random(){
-        return new Point2D(~~(Math.random()*800/diameter),~~(Math.random()*600/diameter));
+        return new Point2D(~~(Math.random()*screenW/diameter),~~(Math.random()*screenH/diameter));
     }
 }
 
 class State {
     constructor(public snake: Point2D[], public candy: Point2D = null, public status: GameState = GameState.loaded) {}
+    static initial(): State {
+        return new State(snakelet(~~(screenW/diameter/2),~~(screenH/diameter/2), 5), Point2D.random());
+    }
 }
 
 enum GameState {
@@ -65,7 +70,7 @@ class Snake implements Game {
             .combineLatest(directions, (t, d) => [t, d])
             .distinctUntilChanged(t => t[0])
             .map(t => t[1])
-            .scan(new State([new Point2D(0,0)], Point2D.random()), (s: State, d: number[]) => eat(move(s,d)))
+            .scan(State.initial(), (s: State, d: number[]) => eat(move(s,d)))
         
         restart.startWith(true)
             .select(_ => game)    
@@ -73,6 +78,10 @@ class Snake implements Game {
             .subscribe(draw.bind(this, ctx))
     }
 
+}
+
+function snakelet(x: number, y: number, length: number = 5): Point2D[] {
+    return Array.apply(null, {length: length}).map(_ => new Point2D(x,y));
 }
 
 function draw(ctx: CanvasRenderingContext2D, state: State){
@@ -93,22 +102,21 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     if(state.status == GameState.loaded){
         ctx.font = "40px Arial";
         var m = ctx.measureText("Press any arrow/wasd key to start");
-        ctx.fillText("Press any arrow/wasd key to start", 800 / 2 - m.width / 2, 600 / 2);
+        ctx.fillText("Press any arrow/wasd key to start", screenW / 2 - m.width / 2, screenH / 2);
     }
 
     if(state.status == GameState.gameover){
         ctx.font = "60px Arial";
         var m = ctx.measureText("GAME OVER");
-        ctx.fillText("GAME OVER", 800 / 2 - m.width / 2, 600 / 2 - 30);
+        ctx.fillText("GAME OVER", screenW / 2 - m.width / 2, 600 / 2 - 30);
         ctx.font = "40px Arial";
         var m = ctx.measureText("Press enter to restart");
-        ctx.fillText("Press enter to restart", 800 / 2 - m.width / 2, 600 / 2 + 20);
+        ctx.fillText("Press enter to restart", screenW / 2 - m.width / 2, screenH / 2 + 20);
     }
 }
 
 function eat(state: State): State {
     if(state.snake[0].equals(state.candy)){
-        console.log("Eaten!");
         return new State(
             state.snake.concat(state.snake[state.snake.length-1]), 
             Point2D.random(),
@@ -121,7 +129,7 @@ function eat(state: State): State {
 function move(state: State, direction: number[]): State {
     if(state.status == GameState.running || state.status == GameState.loaded && direction.length != 0){
         // Move
-        var newPos = state.snake[0].move(direction).loopRound(800/diameter,600/diameter);
+        var newPos = state.snake[0].move(direction).loopRound(screenW/diameter,screenH/diameter);
         // Possibly die
         if(state.snake.slice(0, -1).reduce((p, c) => p || newPos.equals(c), false)){
             return new State(state.snake, state.candy, GameState.gameover);
