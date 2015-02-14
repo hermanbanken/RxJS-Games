@@ -24,6 +24,13 @@ class Point2D {
     static random(){
         return new Point2D(~~(Math.random()*screenW/diameter),~~(Math.random()*screenH/diameter));
     }
+
+    public size = 1;
+    belly(){
+        var p = new Point2D(this.x, this.y);
+        p.size = 1.4;
+        return p;
+    }
 }
 
 class State {
@@ -104,16 +111,19 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     state.snake.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter/2, 0, 2 * Math.PI, false);
+        ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter*p.size/2, 0, 2 * Math.PI, false);
         ctx.fillStyle = 'green';
         ctx.fill();
     });
 
     state.candy.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter/2, 0, 2 * Math.PI, false);
-    ctx.fillStyle = 'orange';
-    ctx.fill();
+        ctx.beginPath();
+        if(state.candy.length == 1)
+        ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter/2, 0, 2 * Math.PI, false);
+        else
+        ctx.rect(p.x * diameter, p.y * diameter, diameter, diameter)
+        ctx.fillStyle = 'orange';
+        ctx.fill();
     });
 
     if(state.status == GameState.loaded){
@@ -136,7 +146,7 @@ function eat(state: State, candy: Point2D[], subject: Rx.Subject<number>): State
     if(candy.map(p => state.snake[0].equals(p)).filter(_ => _).length){
         subject.onNext(0);
         return new State(
-            state.snake.concat(afill(candy.length, _ => state.snake[state.snake.length-1])), 
+            [state.snake[0].belly()].concat(state.snake.slice(1).concat(afill(candy.length, _ => state.snake[state.snake.length-1]))), 
             [],
             state.status
         );
