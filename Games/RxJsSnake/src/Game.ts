@@ -69,12 +69,20 @@ class Snake implements Game {
         var candySource = new Rx.Subject<number>();
         var candy = candySource
             .startWith(0)
-            .select(_ => ~~(Math.pow(Math.random(),4)*4)+1)
+            .select(_ => ~~(Math.pow(Math.random(),6)*4)+1)
             .select(Monster)
             .select(ps => { var origin = Point2D.random(); return ps.map(p => p.move([origin.x, origin.y])) })
+            .select((m: Point2D[]) => {
+                if(m.length == 1)
+                    return Rx.Observable.just<Point2D[]>(m);
+                // Timeout larger monsters
+                return Rx.Observable.just<Point2D[]>(m)
+                    .merge(Rx.Observable.just([]).delay(4000).selectMany(_ => Rx.Observable.throw<Point2D[]>(new Error("Timeout"))));
+            })
+            .switch()
+            .retry()
             .replay(_ => _, 1);
-        Rx.Observable.interval(4000).multicast(candySource).connect();
-
+        
         var game = Rx.Observable
             .interval(100)
             .withLatestFrom(directions, (t, d) => d)
@@ -86,7 +94,6 @@ class Snake implements Game {
             .switch()
             .subscribe(draw.bind(this, ctx))
     }
-
 }
 
 function snakelet(x: number, y: number, length: number = 5): Point2D[] {
