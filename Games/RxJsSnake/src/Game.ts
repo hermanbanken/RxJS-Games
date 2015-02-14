@@ -1,6 +1,7 @@
 /// <reference path="../ts/jquery/jquery.d.ts" />
 /// <reference path="../ts/rx/rx.all.d.ts" />
 /// <reference path="../ts/rx-jquery/rx.jquery.d.ts" />
+/// <reference path="../ts/pullrequestmaterial.d.ts" />
 var diameter = 20,
     screenW = 800,
     screenH = 600;
@@ -67,9 +68,7 @@ class Snake implements Game {
 
         var game = Rx.Observable
             .interval(100)
-            .combineLatest(directions, (t, d) => [t, d])
-            .distinctUntilChanged(t => t[0])
-            .map(t => t[1])
+            .withLatestFrom(directions, (t, d) => d)
             .scan(State.initial(), (s: State, d: number[]) => eat(move(s,d)))
         
         restart.startWith(true)
