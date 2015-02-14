@@ -90,8 +90,12 @@ class Snake implements Game {
             .retry()
             .replay(_ => _, 1);
         
+        var windowState = $(window).onAsObservable("focus blur")
+            .select(e => e.type).startWith("focus").replay(_ => _, 1)
+
         var game = Rx.Observable
             .interval(100)
+            .withLatestFrom(windowState, (t, w) => [t, w]).filter(l => l[1] == 'focus').select(l => l[0])
             .withLatestFrom(directions, (t, d) => d)
             .withLatestFrom(candy, (d, c) => [d, c])
             .scan(State.initial(), (s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource))
