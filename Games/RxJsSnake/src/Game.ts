@@ -27,9 +27,9 @@ class Point2D {
 }
 
 class State {
-    constructor(public snake: Point2D[], public candy: Point2D = null, public status: GameState = GameState.loaded) {}
+    constructor(public snake: Point2D[], public candy: Point2D[] = null, public status: GameState = GameState.loaded) {}
     static initial(): State {
-        return new State(snakelet(~~(screenW/diameter/2),~~(screenH/diameter/2), 5), Point2D.random());
+        return new State(snakelet(~~(screenW/diameter/2),~~(screenH/diameter/2), 5), [Point2D.random()]);
     }
 }
 
@@ -66,10 +66,20 @@ class Snake implements Game {
         var restart = this.keyEvent
             .filter(ke => ke.keyCode == 13).select(_ => true);
 
+        var candySource = new Rx.Subject<number>();
+        var candy = candySource
+            .startWith(0)
+            .select(_ => ~~(Math.pow(Math.random(),4)*4)+1)
+            .select(Monster)
+            .select(ps => { var origin = Point2D.random(); return ps.map(p => p.move([origin.x, origin.y])) })
+            .replay(_ => _, 1);
+        Rx.Observable.interval(4000).multicast(candySource).connect();
+
         var game = Rx.Observable
             .interval(100)
             .withLatestFrom(directions, (t, d) => d)
-            .scan(State.initial(), (s: State, d: number[]) => eat(move(s,d)))
+            .withLatestFrom(candy, (d, c) => [d, c])
+            .scan(State.initial(), (s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource))
         
         restart.startWith(true)
             .select(_ => game)    
@@ -92,11 +102,12 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
         ctx.fill();
     });
 
-    var p = state.candy;
+    state.candy.forEach(p => {
     ctx.beginPath();
     ctx.arc(p.x * diameter + diameter/2, p.y * diameter + diameter/2, diameter/2, 0, 2 * Math.PI, false);
     ctx.fillStyle = 'orange';
     ctx.fill();
+    });
 
     if(state.status == GameState.loaded){
         ctx.font = "40px Arial";
@@ -114,15 +125,16 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     }
 }
 
-function eat(state: State): State {
-    if(state.snake[0].equals(state.candy)){
+function eat(state: State, candy: Point2D[], subject: Rx.Subject<number>): State {
+    if(candy.map(p => state.snake[0].equals(p)).filter(_ => _).length){
+        subject.onNext(0);
         return new State(
-            state.snake.concat(state.snake[state.snake.length-1]), 
-            Point2D.random(),
+            state.snake.concat(afill(candy.length, _ => state.snake[state.snake.length-1])), 
+            [],
             state.status
         );
     }
-    return state;
+    return new State(state.snake, candy, state.status);
 }
 
 function move(state: State, direction: number[]): State {
@@ -155,6 +167,18 @@ function toDirection(keyCode: number){
         case KeyCodes.right: return [1,0];
         default: return [];
     }
+}
+
+function Monster(size: number): Point2D[] {
+    var d = Math.ceil(Math.sqrt(size));
+    return afill(size, _ => 1).concat(afill(d*d-size, _ => 0))
+        .sort(_ => Math.random()-0.5 > 0)
+        .map((v, i) => v ? new Point2D(~~(i / d), i % d) : null)
+        .filter(_ => !!_);
+}
+
+function afill<T>(n: number, v: (number) => T){
+    return Array.apply(null, new Array(n)).map((_, i: number) => v(i));
 }
 
 new Snake().start(<HTMLCanvasElement>document.getElementsByTagName("canvas")[0])
