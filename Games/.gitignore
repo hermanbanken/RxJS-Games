@@ -4,3 +4,4 @@ build.js.map
 build.min.js
 .tscache
 node_modules
+.sublimets
