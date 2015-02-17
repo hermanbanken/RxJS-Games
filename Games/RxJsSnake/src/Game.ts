@@ -1,7 +1,7 @@
-/// <reference path="../ts/jquery/jquery.d.ts" />
-/// <reference path="../ts/rx/rx.all.d.ts" />
-/// <reference path="../ts/rx-jquery/rx.jquery.d.ts" />
-/// <reference path="../ts/pullrequestmaterial.d.ts" />
+/// <reference path="../../ts/jquery/jquery.d.ts" />
+/// <reference path="../../ts/rx/rx.all.d.ts" />
+/// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
+/// <reference path="../../ts/pullrequestmaterial.d.ts" />
 var diameter = 20,
     screenW = 800,
     screenH = 600;
