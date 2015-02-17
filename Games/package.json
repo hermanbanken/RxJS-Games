@@ -1,7 +1,7 @@
 {
-  "name": "RxJsSnake",
+  "name": "RxJS-Games",
   "version": "1.0.0",
-  "description": "Snake, in RxJs",
+  "description": "Games in RxJS. Snake, etc.",
   "homepage": "https://github.com/fptudelft/",
   "author": "Herman Banken, Jeffrey de Lange",
   "keywords": [
