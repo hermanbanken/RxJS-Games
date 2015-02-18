@@ -34,6 +34,8 @@ iteration(Rx.Observable.fromArray([1, 1, 1, 3, 2, 1, 3, 2, 1, 1])).toArray().sub
 	console.log("Should be equal", list, [3, 1, 1, 3, 1, 2, 1, 1, 1, 3, 1, 2, 2, 1])
 })
 
+iteration(iteration(iteration(iteration(iteration(iteration(iteration(iteration(Rx.Observable.just(1))))))))).toArray().subscribe(l => console.log("Was", l));
+
 function id<A>(a: A): A {
 	return a;
 }
