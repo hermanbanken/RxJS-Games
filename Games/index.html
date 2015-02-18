@@ -1,5 +1,26 @@
-<body style="background:black">
+<style>
+	ul { list-style: none; margin: 0; padding: 0; }
+	.nowrap li {
+		margin:0;
+		padding:0;
+		list-style: none;
+		white-space: nowrap;
+	}
+</style>
+
+<body style="background:black;">
+<div style="width: 800px; margin: 0 auto;">
+<h1 style="color:white;text-align:center;">RxJSnake</h1>
 <canvas id="canvas" width="800" height="600" style="background:white; margin: 1cm auto 0;display: block"></canvas>
+
+<h1 style="color:white;text-align:center;">Look-And-Say</h1>
+<div style="width:800px; height: 600px; background:white; overflow: auto;">
+	<ul class='nowrap' id="lookandsay">
+		
+	</ul>
+</div>
+
+</div>
 <script src="node_modules/jquery/dist/jquery.min.js"></script>
 <script src="node_modules/rx/dist/rx.all.min.js"></script>
 <script src="node_modules/rx-jquery/rx.jquery.min.js"></script>
