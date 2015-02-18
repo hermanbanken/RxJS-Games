@@ -1,7 +1,7 @@
-/// <reference path="../ts/jquery/jquery.d.ts" />
-/// <reference path="../ts/rx/rx.all.d.ts" />
-/// <reference path="../ts/rx-jquery/rx.jquery.d.ts" />
-/// <reference path="../ts/pullrequestmaterial.d.ts" />
+/// <reference path="../../ts/jquery/jquery.d.ts" />
+/// <reference path="../../ts/rx/rx.all.d.ts" />
+/// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
+/// <reference path="../../ts/pullrequestmaterial.d.ts" />
 var diameter = 20,
     screenW = 800,
     screenH = 600;
@@ -58,12 +58,13 @@ enum KeyCodes {
 }
 
 class Snake implements Game {
-    keyEvent = $(document.body).keyupAsObservable()
-
+    keyEvent = $(document.body).keydownAsObservable()
+    
     start(canvas:HTMLCanvasElement):void {
         var ctx = canvas.getContext("2d");
 
         var directions = this.keyEvent
+            .do(e => e.preventDefault())
             .filter(ke => !!KeyCodes[ke.keyCode])
             .map(ke => toDirection(ke.keyCode))
             .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])

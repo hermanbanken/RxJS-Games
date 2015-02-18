@@ -1,0 +1,10 @@
+*.iml
+.idea
+build.js
+build.js.map
+build.min.js
+.tscache
+node_modules
+.sublimets
+*/src/*.js
+*/src/*.js.map

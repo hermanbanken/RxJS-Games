@@ -19,8 +19,8 @@ module.exports = function (grunt) {
         },
         ts: {
             build: {
-                src: ["src/*.ts"],
-                out: "dest/build.js",
+                src: ["*/src/*.ts"],
+                out: "build.js",
                 options: {
                     target: "es5",
                     module: "commonjs",
@@ -30,7 +30,7 @@ module.exports = function (grunt) {
                 }
             },
             dist: {
-                src: ["src/*.ts"],
+                src: ["*/src/*.ts"],
                 options: {
                     sourceMaps: false
                 }
@@ -39,13 +39,13 @@ module.exports = function (grunt) {
         uglify: {
             all: {
                 files: {
-                    'dest/build.min.js': ['dest/build.js']
+                    'build.min.js': ['build.js']
                 }
             }
         },
         watch: {
             all: { // <--- Watch for changes and rebuild
-                files: ['src/*.ts', 'src/!*.d.ts', 'tests/*.ts', '!tests/*.d.ts'],
+                files: ['*/src/*.ts', '*/src/!*.d.ts', '*/tests/*.ts', '!*/tests/*.d.ts'],
                 tasks: ['ts:build', 'uglify:all']
             }
         },
