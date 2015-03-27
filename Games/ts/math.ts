@@ -84,6 +84,10 @@ module math {
 			b.points = this.points.map(p => p.map(fx, fy));
 			return b;
 		}
+
+		intersets(other: Box){
+			return true;
+		}
 	}
 
 }

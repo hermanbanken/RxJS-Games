@@ -1,4 +1,4 @@
-/// <reference path="../../ts/rx/rx.all.d.ts" />
+/// <reference path="rx/rx.all.d.ts" />
 
 function toArray(){
 	return Array.prototype.slice.call(arguments[0]);
