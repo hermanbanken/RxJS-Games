@@ -2,7 +2,7 @@
 /// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
 /// <reference path="math.ts" />
 /// <reference path="rx.tupled.ts" />
-/// <reference path="rx.requestanimationframescheduler.ts" />
+/// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 
 module BoxJump {
 
