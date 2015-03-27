@@ -203,4 +203,4 @@ function afill<T>(n: number, v: (number) => T){
     return Array.apply(null, new Array(n)).map((_, i: number) => v(i));
 }
 
-new Snake().start(<HTMLCanvasElement>document.getElementsByTagName("canvas")[0])
+new Snake().start(<HTMLCanvasElement>document.getElementById("snake"))
