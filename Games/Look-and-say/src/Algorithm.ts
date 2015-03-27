@@ -29,10 +29,24 @@ export function run() {
 	).startWith(Rx.Observable.just(1));
 }
 
-run().take(40).subscribe(seq => {
-	var i = 0, list = $("<li></li>");
-	list.appendTo($("#lookandsay"));
-	seq.subscribe(n => { list.append($("<span>"+(i !== 0 ? ", " : "") + n+"</span>")); i++; });
+$("<div class='overlay' style='text-align:center; line-height: 400px'>Click to start Look and Say sequence</div>")
+	.insertAfter($("#lookandsay"))
+	.css({
+		left: $("#lookandsay").position().left,
+		top: $("#lookandsay").position().top,
+		position: "absolute",
+		zIndex: 10,
+		width: $("#lookandsay").parent().width(),
+		height: $("#lookandsay").parent().height()
+	});
+
+$("#lookandsay + .overlay").one('click', function(){
+	$(this).remove();
+	run().take(40).subscribe(seq => {
+		var i = 0, list = $("<li></li>");
+		list.appendTo($("#lookandsay"));
+		seq.subscribe(n => { list.append($("<span>"+(i !== 0 ? ", " : "") + n+"</span>")); i++; });
+	});
 });
 
 function id<A>(a: A): A { 
