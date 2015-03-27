@@ -4,28 +4,44 @@
 /// <reference path="../../ts/rx.tupled.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 
+var levels = [
+	[new math.Box(new math.Point2D(300, 15), 30, 30)],
+	[new math.Box(new math.Point2D(170, 15), 30, 30), new math.Box(new math.Point2D(340, 15), 30, 30)],
+];
+
 module BoxJump {
 
 	export class Game {
+		public level: number = 0;
+
 		public player: Player;
 		constructor(public ctx: CanvasRenderingContext2D) {
-			this.player = new BoxJump.Player(new math.Box(new math.Point2D(0,0), 10, 10));
 			Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame)
 				// Get time delta
 				.map(_ => new Date().getTime()).tupled().map((p: number[]) => p[1] - p[0])
 				// Update game state
 				.withLatestFrom(this.spaces, (t,s) => { return { time: t, space: s }; })
 				.scan(
-					new BoxJump.Player(new math.Box(new math.Point2D(0,0), 20, 20)),
+					new BoxJump.Player(new math.Box(new math.Point2D(0,0), 20, 20), null),
 					(s, t) => s.update(t.time, t.space)
 				)
 				.takeWhile(p => p.box.centre.x < this.ctx.canvas.width)
+				.doOnCompleted(() => this.level++)
 				.repeat()
 				.subscribe(p => {
 					try {
 						this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 						this.ctx.fillStyle = "rgba(255,0,0,1)";
-						p.box.draw(this.ctx);	
+						p.box.draw(this.ctx);
+						var dead = false;
+						if(levels[this.level])
+						for(var bi in levels[this.level]){
+							levels[this.level][bi].draw(this.ctx);
+							dead = dead || p.box.intersects(levels[this.level][bi]);	
+						}
+						if(dead){
+							this.level = -1;	
+						}
 					} catch (e){
 						console.error("Subscribe error! %s", e.stack);
 					}
@@ -40,7 +56,7 @@ module BoxJump {
 	}
 
 	export class Player{
-		constructor(public box: math.Box, public velocity: math.Point2D = null){
+		constructor(public box: math.Box, public velocity: math.Point2D){
 			if(this.velocity == null)
 				this.velocity = new math.Point2D(170, 0);
 		}

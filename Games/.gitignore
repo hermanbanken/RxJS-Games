@@ -8,3 +8,5 @@ node_modules
 .sublimets
 */src/*.js
 */src/*.js.map
+ts/*.js
+ts/*.js.map

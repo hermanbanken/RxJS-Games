@@ -85,7 +85,7 @@ module math {
 			return b;
 		}
 
-		intersets(other: Box){
+		intersects(other: Box){
 			return true;
 		}
 	}
