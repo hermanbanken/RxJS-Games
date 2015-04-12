@@ -31,8 +31,8 @@ module BoxJump {
 					(s, t) => s.update(t.time, t.space)
 				)
 				.takeWhile(p => p.box.centre.x < this.ctx.canvas.width)
-				.doOnCompleted(() => this.level++)
-				.repeat()
+				.doWhile(() => ++this.level < levels.length)
+				.takeWhile(_ => this.level >= 0)
 				.subscribe(p => {
 					try {
 						this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
@@ -52,7 +52,11 @@ module BoxJump {
 					} catch (e){
 						console.error("Subscribe error! %s", e);
 					}
-				}, e => console.error(e));
+				}, e => console.error(e), () => {
+					var txt = this.level > 0 ? "You WON!" : "You LOST!";
+					this.ctx.font = "30px Arial";
+					this.ctx.fillText(txt, this.ctx.canvas.width/2 - this.ctx.measureText(txt).width/2, this.ctx.canvas.height/2);
+				});
 		}
 
 		public spaces = $(document.body)
