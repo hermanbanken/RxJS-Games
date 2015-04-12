@@ -19,7 +19,7 @@ module.exports = function (grunt) {
         },
         ts: {
             build: {
-                src: ["*/src/*.ts"],
+                src: ["ts/*.ts", "*/src/*.ts"],
                 out: "build.js",
                 options: {
                     target: "es5",
@@ -45,7 +45,7 @@ module.exports = function (grunt) {
         },
         watch: {
             all: { // <--- Watch for changes and rebuild
-                files: ['*/src/*.ts', '*/src/!*.d.ts', '*/tests/*.ts', '!*/tests/*.d.ts'],
+                files: ['ts/*.ts', '*/src/*.ts', '*/src/!*.d.ts', '*/tests/*.ts', '!*/tests/*.d.ts'],
                 tasks: ['ts:build', 'uglify:all']
             }
         },
