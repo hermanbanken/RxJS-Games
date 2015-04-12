@@ -6,7 +6,12 @@
 
 var levels = [
 	[new math.Box(new math.Point2D(300, 15), 30, 30)],
-	[new math.Box(new math.Point2D(170, 15), 30, 30), new math.Box(new math.Point2D(340, 15), 30, 30)],
+	[new math.Box(new math.Point2D(170, 15), 30, 30), new math.Box(new math.Point2D(340, 15), 30, 30), new math.Box(new math.Point2D(510, 15), 30, 30)],
+	[
+		new math.Box(new math.Point2D(100, 15), 30, 30), new math.Box(new math.Point2D(220, 35), 30, 30), 
+		new math.Box(new math.Point2D(340, 15), 30, 30), new math.Box(new math.Point2D(460, 35), 30, 30),
+		new math.Box(new math.Point2D(580, 15), 30, 30), new math.Box(new math.Point2D(700, 35), 30, 30)
+	],
 ];
 
 module BoxJump {
