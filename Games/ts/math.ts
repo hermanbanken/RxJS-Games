@@ -47,25 +47,21 @@ module math {
 	}
 
 	export class Box extends Form implements Drawable {
-		constructor(public centre: Point2D, width: number, height: number){
-			super(centre, [[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]].map(c => centre.add(new Point2D(c[0]*width, c[1]*height))));
-		}
-
-		width(){
-			return this.points[0].min(this.points[3]).size();
-		}
-
-		height(){
-			return this.points[0].min(this.points[1]).size();
+		public rotation: number = 0;
+		
+		constructor(public centre: Point2D, public width: number, public height: number, public points: Point2D[] = []){
+			super(centre, points);
+			this.points = points.length && points || [[-0.5,-0.5],[0.5,-0.5],[0.5,0.5],[-0.5,0.5]].map(c => centre.add(new Point2D(c[0]*width, c[1]*height)));
 		}
 
 		move(dist: Point2D) {
-			return Box.fromForm(super.move(dist));
+			return new Box(this.centre.add(dist), this.width, this.height, this.points.map(p => p.add(dist)));
 		}
 
-		static fromForm(f: Form){
-			var b = new Box(f.centre, 0, 0);
-			b.points = f.points;
+		rotate(angle: number): Box {
+			var b = new Box(this.centre, this.width, this.height);
+			b.rotation = this.rotation + angle;
+			b.points = super.rotate(angle).points;
 			return b;
 		}
 
@@ -85,9 +81,14 @@ module math {
 			return b;
 		}
 
-		intersects(other: Box){
-			return true;
+		clearRadius(): number {
+			return Math.max(this.width, this.height);
 		}
+
+		intersects(other: Box){
+			return this.centre.min(other.centre).size() < Math.min(this.clearRadius(), other.clearRadius());
+		}
+
 	}
 
 }

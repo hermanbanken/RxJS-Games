@@ -42,8 +42,10 @@ module BoxJump {
 						if(dead){
 							this.level = -1;	
 						}
+						var txt = "Level: "+this.level;
+						this.ctx.fillText(txt, this.ctx.canvas.width - this.ctx.measureText(txt).width - 10, 15);
 					} catch (e){
-						console.error("Subscribe error! %s", e.stack);
+						console.error("Subscribe error! %s", e);
 					}
 				}, e => console.error(e));
 		}
@@ -62,8 +64,19 @@ module BoxJump {
 		}
 
 		jump(){
-			if(this.box.centre.y == this.box.height()/2){
+			if(this.box.centre.y == this.box.height/2){
 				return new Player(this.box, new math.Point2D(this.velocity.x, 340));
+			}
+			return this;
+		}
+
+		rotate(){
+			if(this.box.centre.y > this.box.height/2){
+				var a = Math.max(this.velocity.y,-340)/340;
+				return new Player(
+					(new math.Box(this.box.centre, this.box.width, this.box.height)).rotate(Math.PI/2 * a),
+					this.velocity
+				);
 			}
 			return this;
 		}
@@ -71,10 +84,10 @@ module BoxJump {
 		update(millis, jump){
 			var v = new math.Point2D(this.velocity.x, this.box.centre.y <= 0 ? 0 : this.velocity.y - 30);
 			var m = this.velocity.times(millis/1000);
-			m = this.box.centre.add(m).map(x=>x, y=>Math.max(y,this.box.height()/2)).min(this.box.centre);
+			m = this.box.centre.add(m).map(x=>x, y=>Math.max(y,this.box.height/2)).min(this.box.centre);
 			var p  = new Player(<math.Box> this.box.move(m), v);
 			jump && (p = p.jump());
-			return p;
+			return p.rotate();
 		}
 	}
 }
