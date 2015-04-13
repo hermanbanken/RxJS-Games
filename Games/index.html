@@ -6,13 +6,54 @@
 		list-style: none;
 		white-space: nowrap;
 	}
+	#connected-game {
+		position: relative;
+	}
+	#connected-game .multiplier {
+		position: absolute;
+		display: flex;
+		bottom: 20px;
+		left: 20px;
+		right: 20px;
+		height: 30px;
+		line-height: 30px;
+	}
+	#connected-game .multiplier span {
+		flex: 1;
+		text-align: center;
+		border: solid #6B7788;
+		border-width: 2px 2px 2px 0;
+		z-index: 2;
+	}
+	#connected-game .multiplier span:first-child {
+		border-width: 2px;
+	}
+	#connected-game .multiplier .bg {
+		position: absolute;
+		z-index: 1;
+		background: #A2A9B2;
+		top: 0;
+		left: 0;
+		bottom: 0;
+		width: 0%;
+	    -webkit-transition: width .2s; /* Safari */
+	    transition: width .2s;
+	}
 </style>
 
 <body style="background:black;">
 <div style="width: 800px; margin: 0 auto;">
 
 <h1 style="color:white;text-align:center;">Connected</h1>
-<canvas id="connected" width="400" height="500" style="background:gray; margin: 1cm auto 0;display: block"></canvas>
+<div id="connected-game" style="width:400px;height:500px;margin: 1cm auto 0;">
+	<canvas id="connected" width="400" height="500" style="background:#ddd; display: block; width: 100%; height: 100%;"></canvas>
+	<div class="multiplier">
+		<span>1x</span>
+		<span>5x</span>
+		<span>10x</span>
+		<div class="bg"></div>
+	</div>
+</div>
 
 <h1 style="color:white;text-align:center;">Box Jump</h1>
 <canvas id="boxjump" width="800" height="300" style="background:white; margin: 1cm auto 0;display: block"></canvas>

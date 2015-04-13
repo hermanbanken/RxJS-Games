@@ -1,7 +1,5 @@
 /// <reference path="../../ts/rx/rx.all.d.ts" />
 /// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
-/// <reference path="../../ts/math.ts" />
-/// <reference path="../../ts/rx.tupled.ts" />
 /// <reference path="../../ts/rx.flatscan.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 
@@ -63,6 +61,12 @@ module Connected {
 		draw(ctx: CanvasRenderingContext2D, game: Game) {
 			var t = this.time;
 			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			
+			ctx.font = "18px Arial";
+			ctx.fillText(""+this.points, 25, 30);
+			var txt = ""+(rounds-this.turnsRemaining)+"/"+rounds;
+			ctx.fillText(txt, ctx.canvas.width - ctx.measureText(txt).width - 25, 30);	
+
 			this.dots.forEach(s => {
 				s.draw(
 					ctx,
@@ -81,6 +85,14 @@ module Connected {
 
 		clearedAnimations(){
 			return new NormalStage(this.points, this.turnsRemaining, this.dots.map(d => d.down(0)));
+		}
+
+		addPoints(p: number){
+			return new NormalStage(this.points + (p * Math.max(1,~~(p / 5) * 5)), this.turnsRemaining-1, this.dots);
+		}
+
+		static bar(x: number){
+			$("#connected-game .multiplier .bg").width(Math.min(100, (x / 5)*33.3)+"%");
 		}
 
 		run(game: Game) {
@@ -110,6 +122,7 @@ module Connected {
 				})
 				// Draw dot inner circles
 				.tap(dots => dots.length && dots[0].draw(game.ctx, game, true))
+				.tap(dots => dots.length && NormalStage.bar(dots.length))
 				.skipWhile(dots => dots.length == 1);
 			
 			// When invalid the list becomes empty, but we still want that empty list (to terminate):
@@ -117,12 +130,13 @@ module Connected {
 			
 			return inclusive
 				.lastOrDefault(null, [])
+				.tapOnCompleted(() => NormalStage.bar(0))
 				.flatMap(list => {
-					return list.length ? this.next(list) : Rx.Observable.just(this);
+					return list.length ? this.next(list) : Rx.Observable.just<Stage>(this);
 				})
 		}
 
-		next(removedDots: Sprite[]) {
+		next(removedDots: Sprite[]): Rx.Observable<Stage> {
 			// Delete removed dots
 			removedDots.forEach(d => {
 				this.dots.splice(this.dots.indexOf(d), 1);
@@ -143,8 +157,14 @@ module Connected {
 			var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/duration*1000/30);
 			return t
 				.takeWhile(t => t < 1)
-				.map(t => this.atTime(t))
-				.concat(Rx.Observable.just(this.clearedAnimations()));
+				.map<Stage>(t => this.atTime(t))
+				.concat((function(){
+					// What will be next
+					var then = this.clearedAnimations().addPoints(removedDots.length);
+					return then.turnsRemaining > 0 ? 
+						Rx.Observable.just<Stage>(then) : 
+						Rx.Observable.just<Stage>(new ScoreStage(then.points)).delay(500).startWith(then);
+				}).call(this));
 		}
 	}
 
@@ -162,8 +182,25 @@ module Connected {
 		}
 		next(removedDots: Sprite[]) {
 			console.log(removedDots.length == this.dots.length ? "Advancing to normal stage" : "Failed tutorial :-(");
-			var r = removedDots.length == this.dots.length ? new NormalStage(0, 20, []) : this;
+			var r = removedDots.length == this.dots.length ? new NormalStage(0, rounds, []) : this;
 			return Rx.Observable.just(r);
+		}
+	}
+
+	class ScoreStage implements Stage {
+		constructor(public points: number){}
+		draw(ctx: CanvasRenderingContext2D, game: Game) {
+			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+			var txt = "You scored "+this.points+" points!";
+			ctx.font = "24px Arial";
+			ctx.fillText(txt, ctx.canvas.width/2 - ctx.measureText(txt).width/2, ctx.canvas.height/2);
+		
+			txt = "Click to restart";
+			ctx.font = "18px Arial";
+			ctx.fillText(txt, ctx.canvas.width/2 - ctx.measureText(txt).width/2, ctx.canvas.height/2 + 100);
+		}
+		run(game: Game) {
+			return game.up.take(1).map(_ => new Start());
 		}
 	}
 
