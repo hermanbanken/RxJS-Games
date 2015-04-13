@@ -109,7 +109,8 @@ module Connected {
 					return list;
 				})
 				// Draw dot inner circles
-				.tap(dots => dots.length && dots[0].draw(game.ctx, game, true));
+				.tap(dots => dots.length && dots[0].draw(game.ctx, game, true))
+				.skipWhile(dots => dots.length == 1);
 			
 			// When invalid the list becomes empty, but we still want that empty list (to terminate):
 			var inclusive = ss.publish(ob => ob.takeUntil(ob.skipWhile(l => l.length > 0)))
@@ -215,7 +216,7 @@ module Connected {
 		}
 
 		public down = $(this.ctx.canvas).onAsObservable("mousedown");
-		public up = $(this.ctx.canvas).onAsObservable("mouseup");
+		public up = $(window).onAsObservable("mouseup");
 
 		public dots = $(this.ctx.canvas).onAsObservable("mousemove")
 			.filter(e => e.which === 1)
