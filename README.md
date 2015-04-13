@@ -11,3 +11,10 @@ Create 10 games in RxJS + HTML5 (like http://lessmilk.com/). You get 1 point per
 </td><td>
 <img src="https://cloud.githubusercontent.com/assets/791189/6200237/234d1d40-b46f-11e4-97f3-3cfdd893c203.png">
 </td></tr></table>
+
+## Connected
+<table><tr><td>
+<img src="Games/Connected/play.png">
+</td><td>
+<img src="Games/Connected/done.png">
+</td></tr></table>
