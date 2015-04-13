@@ -16,22 +16,28 @@ module Connected {
 
 	class Sprite {
 		p = null;
+		public tween: any;
 		constructor(public x: number, public y: number, public color: number) {}
 		down(y: number = 1){
-			return new Sprite(this.x, this.y - y, this.color);
+			return new Sprite(this.x, this.y + y, this.color);
 		}
-		draw(ctx: CanvasRenderingContext2D, game: Game, selected: boolean = false) {
+		downWithTween(y: number = 1){
+			var t = this.down(y);
+			t.tween = { from: this.tween && this.tween.from || this, to: t };
+			return t;
+		}
+		draw(ctx: CanvasRenderingContext2D, game: Game, selected: boolean = false, yoffset: number = 0, opacity: number = 1) {
 			this.p = this.p || game.gridXYtoCanvas(this.x, this.y);
 			ctx.beginPath();
 			var r = game.gridSize / 2;
-			ctx.arc(this.p.x + r, this.p.y + r, r, 0, 2 * Math.PI, false);
+			ctx.arc(this.p.x + r, this.p.y + r + yoffset, r, 0, 2 * Math.PI, false);
 			ctx.lineWidth = 5;
 			ctx.strokeStyle = colors[this.color];
 			ctx.stroke();
 
 			if(selected){
 				ctx.beginPath();
-				ctx.arc(this.p.x + r, this.p.y + r, game.gridSize / 10, 0, 2 * Math.PI, false);
+				ctx.arc(this.p.x + r, this.p.y + r + yoffset, game.gridSize / 10, 0, 2 * Math.PI, false);
 				ctx.lineWidth = 5;
 				ctx.strokeStyle = colors[this.color];
 				ctx.stroke();
@@ -40,27 +46,54 @@ module Connected {
 	}
 
 	class NormalStage implements Stage {
+		time = 0;
+
 		constructor(public points: number, public turnsRemaining: number, public dots: Sprite[]){
 			if(this.dots.length == 0){
 				for(var i = 0; i < 36; i++){
-					this.dots.push(new Sprite(~~(i / 6), i % 6, ~~(Math.random()*4)));
+					this.dots.push(this.randomSprite(~~(i / 6), i % 6));
 				}
 			}
 		}
 
+		randomSprite(x,y){
+			return new Sprite(x,y, ~~(Math.random()*4));
+		}
+
 		draw(ctx: CanvasRenderingContext2D, game: Game) {
+			var t = this.time;
 			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-			this.dots.forEach(s => s.draw(ctx,game));
+			this.dots.forEach(s => {
+				s.draw(
+					ctx,
+					game,
+					false,
+					s.tween && s.tween.from ? (s.tween.from.y - s.y) * (1-Math.min(1, t)) * game.gridSize * 2 : 0,
+					1
+				);
+			});
+		}
+
+		atTime(t: number){
+			this.time = t;
+			return this;
+		}
+
+		clearedAnimations(){
+			return new NormalStage(this.points, this.turnsRemaining, this.dots.map(d => d.down(0)));
 		}
 
 		run(game: Game) {
-			return game.down.take(1)
+			var ss = game.down.take(1)
 				.flatMap(_ => game.dots)
 				.takeUntil(game.up)
 				.flatMap(dot => {
-					console.log("Dots:",this.dots.filter(d => d.x == dot.x && d.y == dot.y));
+					// Convert positions to actual Sprite objects
 					return Rx.Observable.from(this.dots.filter(d => d.x == dot.x && d.y == dot.y));
 				})
+				// Verify if dot may be added,
+				// if so:	  add to list
+				// otherwise: return empty list
 				.scan([], (list, dot) => {
 					// Check if not already contained
 					var contains = list.filter(d => d.x == dot.x && d.y == dot.y).length > 0;
@@ -75,22 +108,42 @@ module Connected {
 					list.unshift(dot);
 					return list;
 				})
-				.tap(l => console.log(l))
-				// When invalid the list becomes empty:
-				.takeWhile(l => l.length > 0)
-				.tap(dots => dots[0].draw(game.ctx, game, true))
-				.skipWhile(l => l.length == 1)
-				.defaultIfEmpty([])
-				.last()
+				// Draw dot inner circles
+				.tap(dots => dots.length && dots[0].draw(game.ctx, game, true));
+			
+			// When invalid the list becomes empty, but we still want that empty list (to terminate):
+			var inclusive = ss.publish(ob => ob.takeUntil(ob.skipWhile(l => l.length > 0)))
+			
+			return inclusive
+				.lastOrDefault(null, [])
 				.flatMap(list => {
-					return list.length ? Rx.Observable.just(this.next(list)) : Rx.Observable.just(this);
+					return list.length ? this.next(list) : Rx.Observable.just(this);
 				})
 		}
 
 		next(removedDots: Sprite[]) {
-			console.log("Success", removedDots);
-			console.log(removedDots);
-			return this;
+			// Delete removed dots
+			removedDots.forEach(d => {
+				this.dots.splice(this.dots.indexOf(d), 1);
+			});
+			// Move existing dots
+			this.dots = this.dots.map(o => {
+				var below = removedDots.filter(_ => _.x == o.x && _.y > o.y).length;
+				return below ? o.downWithTween(below) : o;
+			});
+			// Add new dots that move down
+			removedDots.reduce((p,d) => { p[d.x] = (p[d.x]+1 || 1); return p; }, []).forEach((below, x) => {
+				for(var i = 1; i <= below; i++)
+					this.dots.push(this.randomSprite(x, -i).downWithTween(below));
+			});
+	
+			// Animate
+			var duration = 500;//ms
+			var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/30);
+			var inclusive = t.publish(ob => ob.takeUntil(ob.skipWhile(t => t < duration/1000)));
+			return inclusive.doAction(t => console.log("T=",t))
+				.map(t => this.atTime(t*2))
+				.concat(Rx.Observable.just(this.clearedAnimations()));
 		}
 	}
 
@@ -108,7 +161,8 @@ module Connected {
 		}
 		next(removedDots: Sprite[]) {
 			console.log(removedDots.length == this.dots.length ? "Advancing to normal stage" : "Failed tutorial :-(");
-			return removedDots.length == this.dots.length ? new NormalStage(0, 20, []) : this;
+			var r = removedDots.length == this.dots.length ? new NormalStage(0, 20, []) : this;
+			return Rx.Observable.just(r);
 		}
 	}
 
@@ -150,7 +204,7 @@ module Connected {
 			Rx.Observable
 			.just(new Start())
 			.flatScan<Stage,Stage>(
-				s => s.run(this), 
+				s => { s.draw(this.ctx, this); return s.run(this).doAction(_ => _.draw(this.ctx, this)).last() }, 
 				s => Rx.Observable.just(s)
 			)
 			.subscribe(

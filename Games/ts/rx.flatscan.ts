@@ -13,8 +13,7 @@ declare module Rx {
 Rx.Observable['prototype']['flatScan'] = function<T,R>(iterator: (seed: T) => Rx.Observable<R>, produce: (val: R) => Rx.Observable<T>){
   var source = this;
   return Rx.Observable.create(function(observer){
-  	console.log("Outer");
-    var ret = new Rx.CompositeDisposable();
+  	var ret = new Rx.CompositeDisposable();
   
   	function compl(d){
   		ret.remove(d);
@@ -34,7 +33,6 @@ Rx.Observable['prototype']['flatScan'] = function<T,R>(iterator: (seed: T) => Rx
   	}
 
   	function recurse(s){
-	  	console.log("Recurse");
 	  	ssub(iterator(s), r => {
 	  		observer.onNext(r);
 	  		rsub(produce(r), recurse);
