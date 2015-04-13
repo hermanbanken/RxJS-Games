@@ -140,10 +140,10 @@ module Connected {
 	
 			// Animate
 			var duration = 500;//ms
-			var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/30);
-			var inclusive = t.publish(ob => ob.takeUntil(ob.skipWhile(t => t < duration/1000)));
-			return inclusive.doAction(t => console.log("T=",t))
-				.map(t => this.atTime(t*2))
+			var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/duration*1000/30);
+			return t
+				.takeWhile(t => t < 1)
+				.map(t => this.atTime(t))
 				.concat(Rx.Observable.just(this.clearedAnimations()));
 		}
 	}
@@ -215,20 +215,16 @@ module Connected {
 			);
 		}
 
+		// Mouse events
 		public down = $(this.ctx.canvas).onAsObservable("mousedown");
 		public up = $(window).onAsObservable("mouseup");
 
+		// Observable of Grid movements, emits grid coordinates
 		public dots = $(this.ctx.canvas).onAsObservable("mousemove")
 			.filter(e => e.which === 1)
 			.map(e => this.canvasXYtoGridXY(e.pageX - $(e.target).offset().left, e.pageY - $(e.target).offset().top))
 			.distinctUntilChanged()
 			.filter(p => p.inGrid && p.x >= 0 && p.x < this.cols && p.y >= 0 && p.y < this.rows);
-
-		public spaces = $(document.body)
-			.onAsObservable("keydown keyup")
-			.filter(e => e['keyCode'] === 32)
-			.map(e => e.type === 'keydown')
-			.startWith(false);
 	}
 }
 
