@@ -39,13 +39,29 @@
 	    -webkit-transition: width .2s; /* Safari */
 	    transition: width .2s;
 	}
+
+	.cols {
+		margin: 1cm -20px 0;
+		width: 840px;
+		overflow: hidden;
+	}
+	.cols > div {
+		float: left;
+		margin: 0 10px;
+	}
 </style>
 
 <body style="background:black;">
 <div style="width: 800px; margin: 0 auto;">
 
+<div class="cols">
+<div class="left">
+<h1 style="color:white;text-align:center;">MekelBird</h1>
+<canvas id="flappy" width="400" height="500" style="background:#99CBD4; display: block;"></canvas>
+</div>
+<div class="right">
 <h1 style="color:white;text-align:center;">Connected</h1>
-<div id="connected-game" style="width:400px;height:500px;margin: 1cm auto 0;">
+<div id="connected-game" style="width:400px;height:500px;">
 	<canvas id="connected" width="400" height="500" style="background:#ddd; display: block; width: 100%; height: 100%;"></canvas>
 	<div class="multiplier">
 		<span>1x</span>
@@ -53,6 +69,8 @@
 		<span>10x</span>
 		<div class="bg"></div>
 	</div>
+</div>
+</div>
 </div>
 
 <h1 style="color:white;text-align:center;">Box Jump</h1>

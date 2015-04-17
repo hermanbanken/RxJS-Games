@@ -6,6 +6,7 @@
 
 module Flappy {
 
+	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
 	var rounds = 2;
 	var flapSpeed = 300;
 	var gravity = 500;
@@ -19,6 +20,7 @@ module Flappy {
 
 	interface Sprite {
 		draw(ctx: CanvasRenderingContext2D);
+        lines(): math.Line2D[];
 	}
 
 	class Flappy implements Sprite {
@@ -37,12 +39,16 @@ module Flappy {
 				this.velocity - gravity * deltaT
 			)
 		}
+		box(){
+            return new math.Box(new math.Point2D(60, this.y), 30, 30).rotate(this.rotation);
+		}
 		draw(ctx: CanvasRenderingContext2D){
-			new math.Box(new math.Point2D(60, this.y), 30, 30).rotate(this.rotation).draw(ctx);
+			this.box().draw(ctx);
 		}
 		static initial(){
 			return new Flappy(200, 0, 0);
-		}
+        }
+        lines() { return this.box().lines(); }
 	}
 
 	interface Obstacle extends Sprite {
@@ -57,23 +63,34 @@ module Flappy {
 		delta(deltaT: number) {
 			this.x -= speed * deltaT;
 			return this;
-		}
+        }
+        box() {
+            return new math.Box(new math.Point2D(this.x, this.height / 2), 60, this.height);
+        }
 		draw(ctx: CanvasRenderingContext2D){
-			new math.Box(new math.Point2D(this.x, this.height/2), 60, this.height).draw(ctx);
+            this.box().draw(ctx);
 		}
+        lines() { return this.box().lines(); }
 	}
 
 	class EWI implements Obstacle {
 		public x = 400;
-		constructor(){}
+        h: number = 0;
+		constructor(canvas_height: number){
+            this.h = canvas_height;
+		}
 		boost() { return 100; }
 		delta(deltaT: number) {
 			this.x -= speed * deltaT;
 			return this;
 		}
-		draw(ctx: CanvasRenderingContext2D){
-			new math.Box(new math.Point2D(this.x, 200), 60, ctx.canvas.height - 400).draw(ctx);
+		box() {
+            return new math.Box(new math.Point2D(this.x, 200), 60, this.h - 400);
 		}
+		draw(ctx: CanvasRenderingContext2D){
+			this.box().draw(ctx);
+        }
+        lines() { return this.box().lines(); }
 	}
 
 	class NormalStage implements Stage {
@@ -98,13 +115,29 @@ module Flappy {
 
 			ctx.font = "18px Arial";
 			ctx.fillText(""+this.points, 25, 30);
-
 		}
+
+        static anyIntersection(a: math.Line2D[], b: math.Line2D[]){
+            return a.reduce((p, al) => p || b.reduce((h, bl) => {
+                if (h)
+                    return h;
+                var i = bl.intersects(al);
+                return i && i.length && i;
+            }, false), false);
+        }
 
 		delta(deltaT: number, flap: boolean){
 			var f = this.flappy.delta(deltaT);
 			if(flap)
 				f = f.flap();
+
+            var fl = this.flappy.lines();
+            var collision = this.obstacles.reduce((p, o) => p || NormalStage.anyIntersection(o.lines(), fl), false);
+            if (collision){
+                console.log("Collision!", collision);
+                throw new Error("Dead by collision!");
+            }
+
 			return new NormalStage(this.points, f, this.obstacles.map(o => o.delta(deltaT)));
 		}
 
