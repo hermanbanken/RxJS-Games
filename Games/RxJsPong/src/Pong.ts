@@ -119,6 +119,7 @@ module Pong {
             });
 
         constructor(public ctx: CanvasRenderingContext2D) {
+            ctx.fillStyle = 'white';
             var t = Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame);
 
             var timeEvents = t
@@ -144,7 +145,6 @@ module Pong {
                         try {
                             var ball = state.ball.update(e.dt, state.left, state.right);
                         } catch (e) {
-                            console.log(e, typeof e);
                             if (e instanceof RightScore){
                                 var ball = Ball.initial(-1);
                                 right = 1;
