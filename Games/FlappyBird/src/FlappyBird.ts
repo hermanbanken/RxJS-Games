@@ -8,7 +8,7 @@ module Flappy {
 
 	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
 	var graphics = {
-		trees: ["FlappyBird/tree.png", "FlappyBird/Junglewood_Tree.png"],
+		trees: ["FlappyBird/tree.png", "FlappyBird/tree-high.png", "FlappyBird/Junglewood_Tree.png", "FlappyBird/Pearlwood_Tree.png"],
 		flappy: "FlappyBird/sprites.png"
 	};
 	var images = {};
@@ -17,7 +17,7 @@ module Flappy {
 	var gravity = 500;
 	var roll = Math.PI/100;
 	var speed = 100;
-	var debug = true;
+	var debug = false;
 
 	interface Stage {
 		draw(ctx: CanvasRenderingContext2D): void;
@@ -111,30 +111,49 @@ module Flappy {
 	interface Obstacle extends Sprite {
 		boost(): number;
 		delta(deltaT: number): Obstacle;
+		at(x: number): Obstacle;
+		x: number;
+		width: number;
+		height: number;
 	}
 
-	class StaticObstacle implements Obstacle {
+	class StaticObstacle extends SheetSprite implements Obstacle {
 		public x = 400;
-		constructor(public height: number){}
+		public width = 60;
+		constructor(public height: number){
+			super(null, new math.Point2D(0, 0), 0, 0, 1);
+			this.sheet = images[graphics.trees[~~(Math.random() * graphics.trees.length)]];
+			this.width = this.frame_width = this.sheet.width;
+			this.height = this.frame_height = this.sheet.height;
+		}
 		boost() { return 0; }
 		delta(deltaT: number) {
 			this.x -= speed * deltaT;
 			return this;
 		}
 		box() {
-			return new math.Box(new math.Point2D(this.x, this.height / 2), 60, this.height);
+			return new math.Box(new math.Point2D(this.x, this.height / 2), this.width, this.height);
 		}
 		draw(ctx: CanvasRenderingContext2D){
-			this.box().draw(ctx);
+			if(debug) this.box().draw(ctx, debug);
+			ctx.save();
+			ctx.translate(this.x - this.frame_width / 2, ctx.canvas.height - this.height);
+			super.draw(ctx);
+			ctx.restore();
 		}
 		lines() { return this.box().lines(); }
+		at(x: number) {
+			this.x = x;
+			return this;
+		}
 	}
 
 	class EWI implements Obstacle {
 		public x = 400;
-		h: number = 0;
+		public width = 60;
+		height: number = 0;
 		constructor(canvas_height: number){
-			this.h = canvas_height;
+			this.height = canvas_height;
 		}
 		boost() { return 100; }
 		delta(deltaT: number) {
@@ -142,12 +161,16 @@ module Flappy {
 			return this;
 		}
 		box() {
-			return new math.Box(new math.Point2D(this.x, 200), 60, this.h - 400);
+			return new math.Box(new math.Point2D(this.x, 200), this.width, this.height - 400);
 		}
 		draw(ctx: CanvasRenderingContext2D){
 			this.box().draw(ctx);
 		}
 		lines() { return this.box().lines(); }
+		at(x: number) {
+			this.x = x;
+			return this;
+		}
 	}
 
 	class NormalStage implements Stage {
@@ -155,14 +178,14 @@ module Flappy {
 
 		constructor(public points: number, public flappy: Flappy, public obstacles: Obstacle[]){
 			if(this.obstacles.length == 0){
-				this.obstacles.push(new StaticObstacle(100));
+				this.obstacles.push(new StaticObstacle(100).delta(-1));
 				this.obstacles.push(new StaticObstacle(200).delta(-3));
-				this.obstacles.push(new StaticObstacle(250).delta(-6));
-				this.obstacles.push(new StaticObstacle(300).delta(-9));
+				this.obstacles.push(new StaticObstacle(250).delta(-5.5));
+				this.obstacles.push(new StaticObstacle(300).delta(-7));
+				this.obstacles.push(new StaticObstacle(200).delta(-9));
+				this.obstacles.push(new StaticObstacle(100).delta(-11));
+				this.obstacles.push(new StaticObstacle(300).delta(-13));
 			}
-
-			// TODO check for collisions somewhere. For example here
-			// throw new Error("Flappy collided :-(");
 		}
 
 		draw(ctx: CanvasRenderingContext2D) {
@@ -195,7 +218,28 @@ module Flappy {
 				throw new Error("Dead by collision!");
 			}
 
-			return new NormalStage(this.points, f, this.obstacles.map(o => o.delta(deltaT)));
+			// Move obstacles
+			var win = 0;
+			var os = this.obstacles.map((o:Obstacle) => {
+				var n = o.delta(deltaT);
+				if (n.x < Flappy.x && o.x >= Flappy.x)
+					win += o.height;
+				return n;
+			});
+
+			// Remove old obstacles
+			os = os.filter((o: Obstacle) => o.x + o.width / 2 > 0);
+			// Add new obstacles
+			while (this.obstacles.length > os.length) {
+				var last = this.obstacles[this.obstacles.length - 1];
+				var x = Math.max(last.x + last.width + 100, 400) + Math.random() * 200;
+				if (Math.random() > 0.8)
+					os.push(new EWI(500).at(x));
+				else
+					os.push(new StaticObstacle(300 * Math.random() + 100).at(x));
+			}
+
+			return new NormalStage(this.points + win, f, os);
 		}
 
 		run(game: Game) {
@@ -254,8 +298,7 @@ module Flappy {
 		
 		constructor(public ctx: CanvasRenderingContext2D) {
 			var imageLoaded = Rx.Observable.merge(
-				new Img(graphics.trees[0]).observable.take(1),
-				new Img(graphics.trees[1]).observable.take(1),
+				Rx.Observable.from(graphics.trees).flatMap(t => new Img(t).observable.take(1)),
 				new Img(graphics.flappy).observable.take(1)
 			).scan({}, (registry, img) => {
 				registry[img.src] = img.img; 
