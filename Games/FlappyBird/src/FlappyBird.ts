@@ -7,11 +7,17 @@
 module Flappy {
 
 	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
+	var graphics = {
+		trees: ["FlappyBird/tree.png", "FlappyBird/Junglewood_Tree.png"],
+		flappy: "FlappyBird/sprites.png"
+	};
+	var images = {};
 	var rounds = 2;
 	var flapSpeed = 300;
 	var gravity = 500;
 	var roll = Math.PI/100;
 	var speed = 100;
+	var debug = true;
 
 	interface Stage {
 		draw(ctx: CanvasRenderingContext2D): void;
@@ -23,8 +29,52 @@ module Flappy {
 		lines(): math.Line2D[];
 	}
 
-	class Flappy implements Sprite {
+	class Img {
+		observable = new Rx.Subject<Img>();
+		img = null;
+		constructor(public src: string){
+			this.img = new Image();
+			Rx.Observable.fromEvent(this.img, "load").select(_ => this).multicast(this.observable).connect();
+			this.observable.subscribe(i => console.log("LOADED! " + src));
+			this.img.src = src;
+		}
+	}
+
+	class SheetSprite implements Sprite {
+		f:number = 0;
+		constructor(
+			public sheet: HTMLImageElement, 
+			public sheet_offset: math.Point2D, 
+			public frame_width: number, 
+			public frame_height: number, 
+			public frame_count: number = 1
+		){}
+		draw(ctx: CanvasRenderingContext2D) {
+			this.drawT(ctx, ~~(new Date().getTime() / 30));
+		}
+		drawT(ctx: CanvasRenderingContext2D, frame_number: number) {
+			// For more info to sprite drawing:
+			// @see: http://www.williammalone.com/articles/create-html5-canvas-javascript-sprite-animation/
+			ctx.drawImage(
+				this.sheet,
+				this.sheet_offset.x + this.frame_width * (frame_number % this.frame_count),
+				this.sheet_offset.y,
+				this.frame_width,
+				this.frame_height,
+				0,
+				0,
+				this.frame_width,
+				this.frame_height
+			);
+		}
+		lines(): math.Line2D[] { return []; }
+	}
+
+	class Flappy extends SheetSprite {
+		static offset = new math.Point2D(-3,490);
+		static x = 60;
 		constructor(public y: number, public rotation: number, public velocity: number) {
+			super(images[graphics.flappy], Flappy.offset, 28, 14, 3);
 			if(y <= 0)
 				throw new Error("Flappy died :(");
 		}
@@ -39,10 +89,18 @@ module Flappy {
 			)
 		}
 		box(){
-			return new math.Box(new math.Point2D(60, this.y), 30, 30).rotate(this.rotation);
+			return new math.Box(new math.Point2D(Flappy.x, this.y), 28, 14).rotate(this.rotation);
 		}
 		draw(ctx: CanvasRenderingContext2D){
-			this.box().draw(ctx);
+			if (debug) {
+				this.box().draw(ctx, debug);
+			}
+			ctx.save();
+			ctx.translate(Flappy.x, ctx.canvas.height - this.y);
+			ctx.rotate(-this.rotation);
+			ctx.translate(- this.frame_width / 2, - this.frame_height / 2);
+			super.draw(ctx);
+			ctx.restore();
 		}
 		static initial(){
 			return new Flappy(200, 0, 0);
@@ -193,10 +251,20 @@ module Flappy {
 
 	export class Game {
 		public level: number = 0;
-
+		
 		constructor(public ctx: CanvasRenderingContext2D) {
-			Rx.Observable
-			.just(new Start())
+			var imageLoaded = Rx.Observable.merge(
+				new Img(graphics.trees[0]).observable.take(1),
+				new Img(graphics.trees[1]).observable.take(1),
+				new Img(graphics.flappy).observable.take(1)
+			).scan({}, (registry, img) => {
+				registry[img.src] = img.img; 
+				return registry;	
+			}).last().tap(registry => {
+				images = registry;
+			});
+
+			imageLoaded.select(_ => new Start())
 			.flatScan<Stage,Stage>(
 				s => { s.draw(this.ctx); return s.run(this).doAction(_ => _.draw(this.ctx)).last() }, 
 				s => Rx.Observable.just(s)
