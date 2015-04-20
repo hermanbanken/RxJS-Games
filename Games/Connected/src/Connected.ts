@@ -6,6 +6,7 @@
 module Connected {
 
 	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
+	var rounds = 20;
 
 	interface Stage {
 		draw(ctx: CanvasRenderingContext2D, game: Game): void;
