@@ -9,7 +9,8 @@ module Flappy {
 	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
 	var graphics = {
 		trees: ["FlappyBird/tree.png", "FlappyBird/tree-high.png", "FlappyBird/Junglewood_Tree.png", "FlappyBird/Pearlwood_Tree.png"],
-		flappy: "FlappyBird/sprites.png"
+		flappy: "FlappyBird/sprites.png",
+		coin: "FlappyBird/spinning_coin_gold.png"
 	};
 	var images = {};
 	var rounds = 2;
@@ -117,7 +118,46 @@ module Flappy {
 		height: number;
 	}
 
-	class StaticObstacle extends SheetSprite implements Obstacle {
+	class BasicObstacle extends SheetSprite implements Obstacle {
+		public x = 400;
+		public width : number;
+		public height : number;
+		
+		boost() { return 0; }
+		draw(ctx: CanvasRenderingContext2D) {
+			if (debug) this.box().draw(ctx, debug);
+			if (this.x - this.width / 2 > ctx.canvas.width || this.x + this.width / 2 < 0)
+				return;
+			ctx.save();
+			ctx.translate(this.x - this.frame_width / 2, ctx.canvas.height - this.height);
+			super.draw(ctx);
+			ctx.restore();
+		}
+		at(x: number) {
+			this.x = x;
+			return this;
+		}
+		box() {
+			return new math.Box(new math.Point2D(this.x, this.height / 2), this.width, this.height);
+		}
+		lines() { return this.box().lines(); }
+		delta(deltaT: number) {
+			this.x -= speed * deltaT;
+			return this;
+		}
+	}
+
+	class Coin extends BasicObstacle {
+		static offset = new math.Point2D(0, 0);
+		public x = 400;
+		public width = 32;
+		public height = 32;
+		constructor() {
+			super(images[graphics.coin], new math.Point2D(0, 0), 32, 32, 8);
+		}
+	}
+
+	class StaticObstacle extends BasicObstacle {
 		public x = 400;
 		public width = 60;
 		constructor(public height: number){
@@ -126,57 +166,23 @@ module Flappy {
 			this.width = this.frame_width = this.sheet.width;
 			this.height = this.frame_height = this.sheet.height;
 		}
-		boost() { return 0; }
-		delta(deltaT: number) {
-			this.x -= speed * deltaT;
-			return this;
-		}
-		box() {
-			return new math.Box(new math.Point2D(this.x, this.height / 2), this.width, this.height);
-		}
-		draw(ctx: CanvasRenderingContext2D){
-			if(debug) this.box().draw(ctx, debug);
-			ctx.save();
-			ctx.translate(this.x - this.frame_width / 2, ctx.canvas.height - this.height);
-			super.draw(ctx);
-			ctx.restore();
-		}
-		lines() { return this.box().lines(); }
-		at(x: number) {
-			this.x = x;
-			return this;
-		}
 	}
 
-	class EWI implements Obstacle {
+	class EWI extends StaticObstacle {
 		public x = 400;
 		public width = 60;
 		height: number = 0;
 		constructor(canvas_height: number){
+			super(canvas_height);
 			this.height = canvas_height;
 		}
 		boost() { return 100; }
-		delta(deltaT: number) {
-			this.x -= speed * deltaT;
-			return this;
-		}
-		box() {
-			return new math.Box(new math.Point2D(this.x, 200), this.width, this.height - 400);
-		}
-		draw(ctx: CanvasRenderingContext2D){
-			this.box().draw(ctx);
-		}
-		lines() { return this.box().lines(); }
-		at(x: number) {
-			this.x = x;
-			return this;
-		}
 	}
 
 	class NormalStage implements Stage {
 		time = 0;
 
-		constructor(public points: number, public flappy: Flappy, public obstacles: Obstacle[]){
+		constructor(public points: number, public flappy: Flappy, public obstacles: Obstacle[], public coins: Coin[]){
 			if(this.obstacles.length == 0){
 				this.obstacles.push(new StaticObstacle(100).delta(-1));
 				this.obstacles.push(new StaticObstacle(200).delta(-3));
@@ -186,11 +192,15 @@ module Flappy {
 				this.obstacles.push(new StaticObstacle(100).delta(-11));
 				this.obstacles.push(new StaticObstacle(300).delta(-13));
 			}
+			if(this.coins.length == 0){
+				this.coins.push(new Coin().at(160));
+			}
 		}
 
 		draw(ctx: CanvasRenderingContext2D) {
 			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 			this.obstacles.forEach(o => o.draw(ctx));
+			this.coins.forEach(c => c.draw(ctx));
 			this.flappy.draw(ctx);
 			
 			ctx.font = "18px Arial";
@@ -218,8 +228,17 @@ module Flappy {
 				throw new Error("Dead by collision!");
 			}
 
-			// Move obstacles
 			var win = 0;
+
+			// Coins
+			var cs_all = this.coins.map(c => c.delta(deltaT));
+			try {
+				var cs = this.coins.filter(c => !NormalStage.anyIntersection(c.lines(), fl));
+				win += (cs_all.length - cs.length) * 1000;
+			}catch(e){
+				debugger;
+			}
+			// Move obstacles
 			var os = this.obstacles.map((o:Obstacle) => {
 				var n = o.delta(deltaT);
 				if (n.x < Flappy.x && o.x >= Flappy.x)
@@ -239,7 +258,7 @@ module Flappy {
 					os.push(new StaticObstacle(300 * Math.random() + 100).at(x));
 			}
 
-			return new NormalStage(this.points + win, f, os);
+			return new NormalStage(this.points + win, f, os, cs);
 		}
 
 		run(game: Game) {
@@ -259,7 +278,7 @@ module Flappy {
 	}
 
 	class Start extends NormalStage {
-		constructor(){ super(0, Flappy.initial(), []); }
+		constructor(){ super(0, Flappy.initial(), [], []); }
 		draw(ctx: CanvasRenderingContext2D) {
 			super.draw(ctx);
 
@@ -271,7 +290,7 @@ module Flappy {
 			return Rx.Observable.merge(
 				$(game.ctx.canvas).onAsObservable("click").map(_ => 1),
 				$(window).onAsObservable("keyup").filter(e => e['keyCode'] == "F".charCodeAt(0)).map(_ => 1)
-			).take(1).map(_ => new NormalStage(0, Flappy.initial(), []));
+			).take(1).map(_ => new NormalStage(0, Flappy.initial(), [], []));
 		}
 	}
 
@@ -299,6 +318,7 @@ module Flappy {
 		constructor(public ctx: CanvasRenderingContext2D) {
 			var imageLoaded = Rx.Observable.merge(
 				Rx.Observable.from(graphics.trees).flatMap(t => new Img(t).observable.take(1)),
+				new Img(graphics.coin).observable.take(1),
 				new Img(graphics.flappy).observable.take(1)
 			).scan({}, (registry, img) => {
 				registry[img.src] = img.img; 
