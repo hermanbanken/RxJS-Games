@@ -198,7 +198,7 @@ module Breakout {
 }
 
 Rx.config['longStackSupport'] = true;
-Rx.Observable.just($("#breakout").get(0)).take(1).subscribe(c => {
+$("#breakout").clickAsObservable().take(1).map(e => e.target).subscribe(c => {
     var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
     var game = new Breakout.Game(ctx);
 });
