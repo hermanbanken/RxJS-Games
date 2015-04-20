@@ -32,46 +32,81 @@ module math {
 		}
 	}
 
-    export class Line2D {
-        public a: number = 0;
-        public b: number = 0;
-        constructor(public _0: Point2D, public _1: Point2D){
-            this.a = (_1.y - _0.y) / (_1.x - _0.x);
-            this.b = _0.y - (this.a * _0.x);
-        }
-        intersects(other: Line2D): Point2D[] {    
-            if (this.a == other.a){
-                return [];
-            }
-            else if (!isFinite(this.a) || !isFinite(other.a)) {
-                // non-finite a:
-                // - other crosses x position
-                // - other crosses x position between y0 and y1
-                var inf: Point2D[] = [[this, other], [other, this]]
-                    .filter(ls => !isFinite(ls[0].a))
-                    .reduce((thruth: Point2D[], ls) => {
-                        var oy = ls[1].a * ls[0]._0.x + ls[1].b;
-                        return thruth.length && thruth ||
-                            // ls[1] crosses 90-degree segment's x position:
-                            Line2D.surround(ls[0]._0.x, ls[1]._0.x, ls[1]._1.x) &&
-                            // Between y range of 90-degree segment:
-                            Line2D.surround(oy, ls[0]._0.y, ls[0]._1.y) &&
-                            [new Point2D(ls[0]._0.x, oy)];
-                    }, []);
-                return inf;
-            }
-            else {
-                var x = (this.b - other.b) / (other.a - this.a);
-                return
-                    Line2D.surround(x, this._0.x, this._1.x) && 
-                    Line2D.surround(x, other._0.x, other._1.x) ?
-                    [new Point2D(x, x * this.a + this.b)] : [];
-            }
-        }
-        static surround(val: number, a: number, b: number){
-            return val < Math.max(a, b) && val > Math.min(a, b);
-        }
-    }
+	export class Line2D {
+		public a: number = 0;
+		public b: number = 0;
+		constructor(public _0: Point2D, public _1: Point2D){
+			this.a = (_1.y - _0.y) / (_1.x - _0.x);
+			this.b = _0.y - (this.a * _0.x);
+		}
+		intersects(other: Line2D): Point2D[] {    
+			if (this.a === other.a){
+				return [];
+			}
+			else if (!isFinite(this.a) || !isFinite(other.a)) {
+				// non-finite a:
+				// - other crosses x position
+				// - other crosses x position between y0 and y1
+				var inf: Point2D[] = [[this, other], [other, this]]
+					.filter(ls => !isFinite(ls[0].a))
+					.reduce((thruth: Point2D[], ls) => {
+						var oy = ls[1].a * ls[0]._0.x + ls[1].b;
+						return thruth.length && thruth ||
+							// ls[1] crosses 90-degree segment's x position:
+							Line2D.surround(ls[0]._0.x, ls[1]._0.x, ls[1]._1.x) &&
+							// Between y range of 90-degree segment:
+							Line2D.surround(oy, ls[0]._0.y, ls[0]._1.y) &&
+							[new Point2D(ls[0]._0.x, oy)];
+					}, []);
+				return inf;
+			}
+			else {
+				var x = (this.b - other.b) / (other.a - this.a);
+				var i = Line2D.getLineIntersection(
+					this._0.x, this._0.y, this._1.x, this._1.y, 
+					other._0.x, other._0.y, other._1.x, other._1.y
+				);
+				return i && [new Point2D(x, x * this.a + this.b)] || [];
+			}
+		}
+		static surround(val: number, a: number, b: number){
+			return val < Math.max(a, b) && val > Math.min(a, b);
+		}
+		draw(ctx: CanvasRenderingContext2D) {
+			ctx.beginPath();
+			ctx.moveTo(this._0.x, ctx.canvas.height - this._0.y);
+			ctx.lineTo(this._1.x, ctx.canvas.height - this._1.y);
+			ctx.stroke();
+		}
+		extended(x1: number, x2: number) {
+			return new Line2D(new Point2D(x1, this.a * x1 + this.b), new Point2D(x2, this.a * x2 + this.b));
+		}
+
+		// @see: http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect#comment19248344_1968345
+		static getLineIntersection(p0_x, p0_y, p1_x, p1_y, p2_x, p2_y, p3_x, p3_y) {
+			var s1_x, 
+				s1_y, 
+				s2_x, 
+				s2_y; 
+
+			s1_x = p1_x - p0_x; 
+			s1_y = p1_y - p0_y; 
+			s2_x = p3_x - p2_x; 
+			s2_y = p3_y - p2_y; 
+
+			var s, t; 
+
+			s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y); 
+			t = (s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+			
+			if (s >= 0 && s <= 1 && t >= 0 && t <= 1) { 
+				// Collision detected 
+				var intX = p0_x + (t * s1_x); var intY = p0_y + (t * s1_y); 
+				return [intX, intY]; 
+			}
+			return null; // No collision
+		}
+	}
 
 	class Form {
 		constructor(public centre: Point2D, public points: Point2D[]){}
@@ -106,7 +141,7 @@ module math {
 			return b;
 		}
 
-		draw(ctx: CanvasRenderingContext2D){
+		draw(ctx: CanvasRenderingContext2D, debug: boolean = false){
 			ctx.beginPath();
 			ctx.moveTo(this.points[0].x, ctx.canvas.height - this.points[0].y);
 			for(var i = 1; i < this.points.length; i++){
@@ -114,6 +149,13 @@ module math {
 			}
 			ctx.closePath();
 			ctx.fill();
+
+			if (debug) {
+				var c = ctx.strokeStyle;
+				ctx.strokeStyle = "red";
+				this.lines().forEach(l => l.draw(ctx));
+				ctx.strokeStyle = c;
+			}
 		}
 
 		map(fx: (number) => number, fy: (number) => number){
@@ -126,9 +168,9 @@ module math {
 			return Math.max(this.width, this.height);
 		}
 
-        lines(): Line2D[] {
-            return this.points.map((p, i) => new Line2D(p, this.points[(i+1)%this.points.length]));
-        }
+		lines(): Line2D[] {
+			return this.points.map((p, i) => new Line2D(p, this.points[(i+1)%this.points.length]));
+		}
 
 		intersects(other: Box){
 			return this.centre.min(other.centre).size() < Math.min(this.clearRadius(), other.clearRadius());

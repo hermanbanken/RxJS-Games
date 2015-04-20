@@ -20,7 +20,7 @@ module Flappy {
 
 	interface Sprite {
 		draw(ctx: CanvasRenderingContext2D);
-        lines(): math.Line2D[];
+		lines(): math.Line2D[];
 	}
 
 	class Flappy implements Sprite {
@@ -32,7 +32,6 @@ module Flappy {
 			return new Flappy(this.y, this.rotation, flapSpeed);
 		}
 		delta(deltaT: number){
-			console.log("Flapping", deltaT);
 			return new Flappy(
 				this.y + this.velocity * deltaT, 
 				Math.max(-Math.PI/4, Math.min(Math.PI/4, this.rotation + this.velocity * roll * deltaT)), //this.rotation + Math['sign'].call(Math, this.velocity) * roll * deltaT
@@ -40,15 +39,15 @@ module Flappy {
 			)
 		}
 		box(){
-            return new math.Box(new math.Point2D(60, this.y), 30, 30).rotate(this.rotation);
+			return new math.Box(new math.Point2D(60, this.y), 30, 30).rotate(this.rotation);
 		}
 		draw(ctx: CanvasRenderingContext2D){
 			this.box().draw(ctx);
 		}
 		static initial(){
 			return new Flappy(200, 0, 0);
-        }
-        lines() { return this.box().lines(); }
+		}
+		lines() { return this.box().lines(); }
 	}
 
 	interface Obstacle extends Sprite {
@@ -63,21 +62,21 @@ module Flappy {
 		delta(deltaT: number) {
 			this.x -= speed * deltaT;
 			return this;
-        }
-        box() {
-            return new math.Box(new math.Point2D(this.x, this.height / 2), 60, this.height);
-        }
-		draw(ctx: CanvasRenderingContext2D){
-            this.box().draw(ctx);
 		}
-        lines() { return this.box().lines(); }
+		box() {
+			return new math.Box(new math.Point2D(this.x, this.height / 2), 60, this.height);
+		}
+		draw(ctx: CanvasRenderingContext2D){
+			this.box().draw(ctx);
+		}
+		lines() { return this.box().lines(); }
 	}
 
 	class EWI implements Obstacle {
 		public x = 400;
-        h: number = 0;
+		h: number = 0;
 		constructor(canvas_height: number){
-            this.h = canvas_height;
+			this.h = canvas_height;
 		}
 		boost() { return 100; }
 		delta(deltaT: number) {
@@ -85,12 +84,12 @@ module Flappy {
 			return this;
 		}
 		box() {
-            return new math.Box(new math.Point2D(this.x, 200), 60, this.h - 400);
+			return new math.Box(new math.Point2D(this.x, 200), 60, this.h - 400);
 		}
 		draw(ctx: CanvasRenderingContext2D){
 			this.box().draw(ctx);
-        }
-        lines() { return this.box().lines(); }
+		}
+		lines() { return this.box().lines(); }
 	}
 
 	class NormalStage implements Stage {
@@ -110,33 +109,33 @@ module Flappy {
 
 		draw(ctx: CanvasRenderingContext2D) {
 			ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-			this.flappy.draw(ctx);
 			this.obstacles.forEach(o => o.draw(ctx));
-
+			this.flappy.draw(ctx);
+			
 			ctx.font = "18px Arial";
 			ctx.fillText(""+this.points, 25, 30);
 		}
 
-        static anyIntersection(a: math.Line2D[], b: math.Line2D[]){
-            return a.reduce((p, al) => p || b.reduce((h, bl) => {
-                if (h)
-                    return h;
-                var i = bl.intersects(al);
-                return i && i.length && i;
-            }, false), false);
-        }
+		static anyIntersection(as: math.Line2D[], bs: math.Line2D[]){
+			return as.reduce((p, a) => p || bs.reduce((h, b) => {
+				if (h)
+					return h;
+				var i = b.intersects(a);
+				return i && i.length && i;
+			}, false), false);
+		}
 
 		delta(deltaT: number, flap: boolean){
 			var f = this.flappy.delta(deltaT);
 			if(flap)
 				f = f.flap();
 
-            var fl = this.flappy.lines();
-            var collision = this.obstacles.reduce((p, o) => p || NormalStage.anyIntersection(o.lines(), fl), false);
-            if (collision){
-                console.log("Collision!", collision);
-                throw new Error("Dead by collision!");
-            }
+			var fl = this.flappy.lines();
+			var collision = this.obstacles.reduce((p, o) => p || NormalStage.anyIntersection(o.lines(), fl), false);
+			if (collision){
+				console.log("Collision!", collision);
+				throw new Error("Dead by collision!");
+			}
 
 			return new NormalStage(this.points, f, this.obstacles.map(o => o.delta(deltaT)));
 		}
