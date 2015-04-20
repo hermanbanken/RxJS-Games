@@ -138,7 +138,7 @@ module Pong {
                     (e, dir) => ({dt: e.dt, left: e.left, right: dir})
                 );
 
-            paddleEvents.scan(
+            var scanned = paddleEvents.scan(
                     { scoreLeft: 0, left: Paddle.initialLeft(), scoreRight: 0, right: Paddle.initialRight(), ball: Ball.initial() },
                     (state, e) => {
                         var left = 0, right = 0;
@@ -157,13 +157,16 @@ module Pong {
 
                         return {
                             scoreLeft: state.scoreLeft + left,
-                            left: state.left.update(e.dt, e.left), 
+                            left: state.left.update(e.dt, e.left),
                             scoreRight: state.scoreRight + right,
                             right: state.right.update(e.dt, e.right),
                             ball: ball
                         };
                     }
-                ).subscribe(state => {
+                );
+
+            $(ctx.canvas).onAsObservable("click").take(1).flatMap(_ => scanned)
+                .subscribe(state => {
                     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
                     state.left.draw(ctx);
                     state.right.draw(ctx);

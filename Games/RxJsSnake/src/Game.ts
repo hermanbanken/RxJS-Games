@@ -63,9 +63,16 @@ class Snake implements Game {
     start(canvas:HTMLCanvasElement):void {
         var ctx = canvas.getContext("2d");
 
+        // Globally: disable up/down scrolling
+        $(document.body).keydownAsObservable()
+            .filter(ke => ke.keyCode === KeyCodes.up || ke.keyCode === KeyCodes.down || ke.keyCode === 32)
+            .subscribe(e => e.preventDefault());
+
         var directions = this.keyEvent
-            .do(e => e.preventDefault())
+            // Start with S
+            .filter(e => e.keyCode === KeyCodes.s).take(1).flatMap(_ => this.keyEvent)
             .filter(ke => !!KeyCodes[ke.keyCode])
+            .do(e => e.preventDefault())
             .map(ke => toDirection(ke.keyCode))
             .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])
             .filter(d => d.length == 2)
@@ -132,9 +139,14 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     });
 
     if(state.status == GameState.loaded){
+        var help, m : TextMetrics;
         ctx.font = "40px Arial";
-        var m = ctx.measureText("Press any arrow/wasd key to start");
-        ctx.fillText("Press any arrow/wasd key to start", screenW / 2 - m.width / 2, screenH / 2);
+        help = "Press S to start";
+        m = ctx.measureText(help);
+        ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2);
+        help = "Then press any arrow/wasd key to move";
+        m = ctx.measureText(help);
+        ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2 + 60);
     }
 
     if(state.status == GameState.gameover){
