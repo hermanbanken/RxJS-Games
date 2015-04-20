@@ -238,7 +238,7 @@ module Connected {
 			this.cols = 6;
 			this.rows = 6;
 
-			this.gridSize = ctx.canvas.width / (this.rows * 2 + 1);
+			this.gridSize = 400 / (this.rows * 2 + 1);
 
 			Rx.Observable
 			.just(new Start())
@@ -257,11 +257,22 @@ module Connected {
 		public down = $(this.ctx.canvas).onAsObservable("mousedown");
 		public up = $(window).onAsObservable("mouseup");
 
+        static getMousePos(canvas, evt) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
 		// Observable of Grid movements, emits grid coordinates
 		public dots = $(this.ctx.canvas).onAsObservable("mousemove")
 			.filter(e => e.which === 1)
-			.map(e => this.canvasXYtoGridXY(e.pageX - $(e.target).offset().left, e.pageY - $(e.target).offset().top))
-			.distinctUntilChanged()
+            .map(e => {
+                var p = Game.getMousePos(e.target, e);
+                return this.canvasXYtoGridXY(p.x, p.y);
+            })
+            .distinctUntilChanged()
 			.filter(p => p.inGrid && p.x >= 0 && p.x < this.cols && p.y >= 0 && p.y < this.rows);
 	}
 }

@@ -2,9 +2,9 @@
 /// <reference path="../../ts/rx/rx.all.d.ts" />
 /// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
 /// <reference path="../../ts/pullrequestmaterial.d.ts" />
-var diameter = 20,
-    screenW = 800,
-    screenH = 600;
+var diameter = 15,
+    screenW = 600,
+    screenH = 450;
 
 interface Game {
     start(canvas: HTMLCanvasElement): void
@@ -70,7 +70,7 @@ class Snake implements Game {
 
         var directions = this.keyEvent
             // Start with S
-            .filter(e => e.keyCode === KeyCodes.s).take(1).flatMap(_ => this.keyEvent)
+            .filter(e => e.keyCode === 32).take(1).flatMap(_ => this.keyEvent)
             .filter(ke => !!KeyCodes[ke.keyCode])
             .do(e => e.preventDefault())
             .map(ke => toDirection(ke.keyCode))
@@ -141,10 +141,10 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     if(state.status == GameState.loaded){
         var help, m : TextMetrics;
         ctx.font = "40px Arial";
-        help = "Press S to start";
+        help = "Press SPACE to start and";
         m = ctx.measureText(help);
         ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2);
-        help = "Then press any arrow/wasd key to move";
+        help = "any arrow/wasd key to move";
         m = ctx.measureText(help);
         ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2 + 60);
     }
@@ -152,7 +152,7 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     if(state.status == GameState.gameover){
         ctx.font = "60px Arial";
         var m = ctx.measureText("GAME OVER");
-        ctx.fillText("GAME OVER", screenW / 2 - m.width / 2, 600 / 2 - 30);
+        ctx.fillText("GAME OVER", screenW / 2 - m.width / 2, screenH / 2 - 30);
         ctx.font = "40px Arial";
         var m = ctx.measureText("Press enter to restart");
         ctx.fillText("Press enter to restart", screenW / 2 - m.width / 2, screenH / 2 + 20);

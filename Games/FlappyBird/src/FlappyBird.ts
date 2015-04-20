@@ -36,7 +36,6 @@ module Flappy {
 		constructor(public src: string){
 			this.img = new Image();
 			Rx.Observable.fromEvent(this.img, "load").select(_ => this).multicast(this.observable).connect();
-			this.observable.subscribe(i => console.log("LOADED! " + src));
 			this.img.src = src;
 		}
 	}
@@ -282,14 +281,14 @@ module Flappy {
 		draw(ctx: CanvasRenderingContext2D) {
 			super.draw(ctx);
 
-			var txt = "click to start or press F";
+			var txt = "press space to start";
 			ctx.font = "18px Arial";
 			ctx.fillText(txt, ctx.canvas.width/2 - ctx.measureText(txt).width/2, ctx.canvas.height/2 + 100);
 		}
 		run(game: Game){
 			return Rx.Observable.merge(
 				$(game.ctx.canvas).onAsObservable("click").map(_ => 1),
-				$(window).onAsObservable("keyup").filter(e => e['keyCode'] == "F".charCodeAt(0)).map(_ => 1)
+				$(window).onAsObservable("keyup").filter(e => e['keyCode'] == 32).map(_ => 1)
 			).take(1).map(_ => new NormalStage(0, Flappy.initial(), [], []));
 		}
 	}

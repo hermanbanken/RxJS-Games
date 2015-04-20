@@ -1,0 +1,62 @@
+body {background:black;}
+ul { list-style: none; margin: 0; padding: 0; }
+.nowrap li {
+	margin:0;
+	padding:0;
+	list-style: none;
+	white-space: nowrap;
+}
+#connected-game {
+	position: relative;
+}
+#connected-game .multiplier {
+	position: absolute;
+	display: flex;
+	bottom: 20px;
+	left: 20px;
+	right: 20px;
+	height: 30px;
+	line-height: 30px;
+}
+#connected-game .multiplier span {
+	flex: 1;
+	text-align: center;
+	border: solid #6B7788;
+	border-width: 2px 2px 2px 0;
+	z-index: 2;
+}
+#connected-game .multiplier span:first-child {
+	border-width: 2px;
+}
+#connected-game .multiplier .bg {
+	position: absolute;
+	z-index: 1;
+	background: #A2A9B2;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	width: 0%;
+    -webkit-transition: width .2s; /* Safari */
+    transition: width .2s;
+}
+
+.cols {
+	margin: 1cm -20px 0;
+	width: 840px;
+	overflow: hidden;
+}
+.cols > div {
+	float: left;
+	margin: 0 10px;
+}
+
+/* Reveal.js */
+.reveal section img.normal {
+	margin: 0px;
+	background: none; 
+	border: none; 
+	box-shadow: none; 
+}
+canvas { 
+    -webkit-transform-origin: 0 0;
+}

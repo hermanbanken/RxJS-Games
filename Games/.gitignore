@@ -10,3 +10,4 @@ node_modules
 */src/*.js.map
 ts/*.js
 ts/*.js.map
+*tsconfig.json
