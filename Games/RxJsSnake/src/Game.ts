@@ -60,7 +60,7 @@ enum KeyCodes {
 class Snake implements Game {
     keyEvent = $(document.body).keydownAsObservable()
     
-    start(canvas:HTMLCanvasElement):void {
+    start(canvas:HTMLCanvasElement): Rx.Observable<State> {
         var ctx = canvas.getContext("2d");
 
         // Globally: disable up/down scrolling
@@ -70,7 +70,7 @@ class Snake implements Game {
 
         var directions = this.keyEvent
             // Start with S
-            .filter(e => e.keyCode === 32).take(1).flatMap(_ => this.keyEvent)
+            //.filter(e => e.keyCode === 32).take(1).flatMap(_ => this.keyEvent)
             .filter(ke => !!KeyCodes[ke.keyCode])
             .do(e => e.preventDefault())
             .map(ke => toDirection(ke.keyCode))
@@ -108,10 +108,10 @@ class Snake implements Game {
             .withLatestFrom(candy, (d, c) => [d, c])
             .scan(State.initial(), (s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource))
         
-        restart.startWith(true)
+        return restart.startWith(true)
             .select(_ => game)    
             .switch()
-            .subscribe(draw.bind(this, ctx))
+            .tap(draw.bind(this, ctx))
     }
 }
 
@@ -141,10 +141,10 @@ function draw(ctx: CanvasRenderingContext2D, state: State){
     if(state.status == GameState.loaded){
         var help, m : TextMetrics;
         ctx.font = "40px Arial";
-        help = "Press SPACE to start and";
+        help = "Press any arrow/wasd key";
         m = ctx.measureText(help);
         ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2);
-        help = "any arrow/wasd key to move";
+        help = "to move";
         m = ctx.measureText(help);
         ctx.fillText(help, screenW / 2 - m.width / 2, screenH / 2 + 60);
     }
@@ -215,4 +215,7 @@ function afill<T>(n: number, v: (number) => T){
     return Array.apply(null, new Array(n)).map((_, i: number) => v(i));
 }
 
-new Snake().start(<HTMLCanvasElement>document.getElementById("snake"))
+Reveal.forSlide(s => s.currentSlide.id == 'g-snake', s => {
+    var canvas = <HTMLCanvasElement> $("#snake").get(0);
+    return new Snake().start(canvas);
+}).subscribe(e => {});
