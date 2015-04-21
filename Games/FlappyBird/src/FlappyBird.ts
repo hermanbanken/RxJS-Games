@@ -9,7 +9,7 @@ module Flappy {
 	var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
 	var graphics = {
 		trees: ["FlappyBird/tree.png", "FlappyBird/tree-high.png", "FlappyBird/Junglewood_Tree.png", "FlappyBird/Pearlwood_Tree.png"],
-		clouds: ["FlappyBird/cloud.png"],
+        clouds: ["FlappyBird/cloud.png", "FlappyBird/actual-cloud.png"],
 		flappy: "FlappyBird/sprites.png",
 		aula: "FlappyBird/aula.png",
 		ewi: "FlappyBird/ewi-blur.png",
