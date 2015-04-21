@@ -3,6 +3,7 @@
 /// <reference path="../../ts/rx.flatscan.ts" />
 /// <reference path="../../ts/math.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
+/// <reference path="../../ts/rx-reveal.ts" />
 
 module DotsAndBoxes {
 
@@ -185,7 +186,7 @@ module DotsAndBoxes {
             ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
         }
         run(game: Game) {
-            return game.up.take(1).map(_ => new Start(game));
+            return Rx.Observable.just(new Start(game));
         }
     }
 
@@ -251,29 +252,25 @@ module DotsAndBoxes {
         }
 
         constructor(public ctx: CanvasRenderingContext2D) {
-
             this.cols = 4;
             this.rows = 4;
-
             this.gridSize = (ctx.canvas.width - 2*this.marginLeft) / (this.rows);
+        }
 
-            Rx.Observable
-                .just(new Start(this))
+        run(){
+            return Rx.Observable.just(new Start(this))
                 .flatScan<Stage, Stage>(
-                s => { s.draw(this.ctx, this); return s.run(this).doAction(_ => _.draw(this.ctx, this)).last() },
-                s => Rx.Observable.just(s)
+                    s => { s.draw(this.ctx, this); return s.run(this).doAction(_ => _.draw(this.ctx, this)).last() },
+                    s => Rx.Observable.just(s)
                 )
-                .subscribe(
-                s => s.draw(this.ctx, this),
-                e => console.error(e),
-                () => console.log("Completed game")
+                .tap(
+                    s => s.draw(this.ctx, this),
+                    e => console.error(e),
+                    () => console.log("Completed game")
                 );
         }
 
         // Mouse events
-        public down = $(this.ctx.canvas).onAsObservable("mousedown");
-        public up = $(window).onAsObservable("mouseup");
-
         static getMousePos(canvas, evt) {
             var rect = canvas.getBoundingClientRect();
             return {
@@ -309,25 +306,12 @@ module DotsAndBoxes {
             this.mouse.filter(m => m.type == 'mousedown' || m.type == 'mouseup'), 
             this.hooverInOut
         );
-        // this.mouse
-        //     .distinctUntilChanged()
-        //     .scan([], (l, d) => {
-        //         // Add in mouse out events
-        //         if (l[0] && l[0].type == 'mousemove' && (l[0].position.x != d.position.x || l[0].position.y != d.position.y)) {
-        //             return [d, {
-        //                 position: l[0].position,
-        //                 originalEvent: d.originalEvent,
-        //                 type: "mouseout"
-        //             }];
-        //         }
-        //         return [d];
-        //     })
-        //     .flatMap(l => Rx.Observable.from(l))
-        //     .filter(_ => _)
     }
 }
 
-$("#dotsandboxes").onAsObservable("click").take(1).map(_ => _.target).subscribe(c => {
-    var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
-    var game = new DotsAndBoxes.Game(ctx);
+Reveal.forSlide(s => s.currentSlide.id == 'g-dotsandboxes', s => {
+    var canvas = <HTMLCanvasElement> $("#dotsandboxes").get(0);
+    return new DotsAndBoxes.Game(canvas.getContext("2d")).run();
+}).subscribe(e => {
+    console.log("Loaded Dots & Boxes");
 });
