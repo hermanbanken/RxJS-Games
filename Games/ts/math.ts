@@ -72,7 +72,7 @@ module math {
 		static surround(val: number, a: number, b: number){
 			return val < Math.max(a, b) && val > Math.min(a, b);
 		}
-		draw(ctx: CanvasRenderingContext2D) {
+		draw(ctx: CanvasRenderingContext2D, debug: boolean = false) {
 			ctx.beginPath();
 			ctx.moveTo(this._0.x, ctx.canvas.height - this._0.y);
 			ctx.lineTo(this._1.x, ctx.canvas.height - this._1.y);
@@ -105,6 +105,10 @@ module math {
 				return [intX, intY]; 
 			}
 			return null; // No collision
+		}
+
+		size(){
+			return Math.sqrt(Math.pow(this._1.x - this._0.x, 2) + Math.pow(this._1.y - this._0.y, 2));
 		}
 	}
 
@@ -141,11 +145,11 @@ module math {
 			return b;
 		}
 
-		draw(ctx: CanvasRenderingContext2D, debug: boolean = false){
+		draw(ctx: CanvasRenderingContext2D, debug: boolean = false, flip: boolean = true){
 			ctx.beginPath();
-			ctx.moveTo(this.points[0].x, ctx.canvas.height - this.points[0].y);
+			ctx.moveTo(this.points[0].x, flip ? ctx.canvas.height - this.points[0].y : this.points[0].y);
 			for(var i = 1; i < this.points.length; i++){
-				ctx.lineTo(this.points[i].x, ctx.canvas.height - this.points[i].y);
+				ctx.lineTo(this.points[i].x, flip ? ctx.canvas.height - this.points[i].y : this.points[i].y);
 			}
 			ctx.closePath();
 			ctx.fill();
