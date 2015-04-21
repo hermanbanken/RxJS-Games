@@ -406,7 +406,6 @@ module Flappy {
 	}
 }
 
-Rx.config['longStackSupport'] = true;
 Rx.Observable.just($("#flappy").get(0)).take(1).subscribe(c => {
 	var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
 	var game = new Flappy.Game(ctx);

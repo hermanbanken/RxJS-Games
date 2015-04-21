@@ -101,7 +101,6 @@ module BoxJump {
 	}
 }
 
-Rx.config['longStackSupport'] = true;
 $("#boxjump").clickAsObservable().take(1).subscribe(e => {
 	var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>e.target).getContext("2d");
 	var game = new BoxJump.Game(ctx);

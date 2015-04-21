@@ -277,7 +277,6 @@ module Connected {
 	}
 }
 
-Rx.config['longStackSupport'] = true;
 Rx.Observable.just($("#connected").get(0)).take(1).subscribe(c => {
 	var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
 	var game = new Connected.Game(ctx);
