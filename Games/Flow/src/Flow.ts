@@ -29,7 +29,8 @@ module Flow {
         resources: Rx.Disposable[] = [];
         public instance;
         public userFlows;
-        constructor(game: Game) {
+        constructor(game: Game, public i:number = 0) {
+            console.log("Instantiated Stage", i);
             this.instance = Instance.simple(game.cols, game.rows, game.cols - 1);
             this.userFlows = new Instance([]);
         }
@@ -70,10 +71,6 @@ module Flow {
             // Lines
             ctx.save();
             ctx.translate(game.gridW * .5, game.gridH * .5);
-            if(inProgress)
-            console.log("Drawing, userflows.length = ", this.userFlows.with(inProgress).flows.length, inProgress.index);
-            else 
-            console.warn("No progress")
             this.userFlows.with(inProgress).flows.forEach((f, i) => {
                 ctx.strokeStyle = colors[i % colors.length];
                 ctx.fillStyle = colors[i % colors.length];
@@ -112,13 +109,11 @@ module Flow {
             uf = this.userFlows.with(flow);
 
             var subsequent: Rx.Observable<math.XY> = game.tiles
-                .tap(m => console.log("move", m))
                 .takeWhile(e => e.type == "mousemove")
                 .distinctUntilChanged()
                 .takeUntil(game.tiles.filter(e => e.type == "mouseup"));
 
             return subsequent.scan({ good: false, flow: flow, uf: uf }, (acc, box) => {
-                console.log("SCAN");
                 var ps = acc.flow.ps;
                 if (this.adjacent(ps[ps.length - 1], box) && !acc.uf.contains(box)) {
                     var flow = {
@@ -137,26 +132,24 @@ module Flow {
         }
 
         run(game: Game): Rx.Observable<Stage> {
+            console.log("Running Stage", this.i);
             console.log("NORMAL");
             var states = game.tiles.filter(e => e.type == "mousedown")
-                .map(start => 
+                .flatMap(start =>
                     this.dragSequence(game, start)
-                        .tap(s => {
-                            console.log("DS: ",s.flow.ps.length, s.flow);
-                            this.draw(game.ctx, game, s.flow)
-                        }, e => console.error("DS error: ",e), () => console.warn("DS ended"))
+                        .tap(s => this.draw(game.ctx, game, s.flow))
                         .skipWhile(s => !s.good).last()
                 )
-                .switch()
                 .map(state => {
                     console.log("Resulting state: ", state);
-                    var s = new NormalStage(game);
+                    var s = new NormalStage(game, this.i+1);
                     s.instance = this.instance;
                     s.userFlows = state.uf;
                     return s;
-                });
+                }).tap(e => { }, e => console.error("E10", e), () => console.warn("E10 Done!"))
+                .take(1)
+                .catch(Rx.Observable.just(this));
             return states;
-//            return Rx.Observable.never<Stage>();
         }
 
         adjacent(p1: math.XY, p2: math.XY): boolean {

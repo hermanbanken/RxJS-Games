@@ -44,8 +44,10 @@ module Flow {
 
         isStartOrEnd(p: math.XY): boolean {
             var i = this.flowIndex(p);
-            return Instance.equals(p, this.flows[i][0])
-                || Instance.equals(p, this.flows[i][this.flows[i].length-1])
+            return typeof i === 'number' && i >= 0 && (
+                Instance.equals(p, this.flows[i][0]) || 
+                Instance.equals(p, this.flows[i][this.flows[i].length - 1])
+            );
         }
 
         static equals(a: math.XY, b: math.XY){
