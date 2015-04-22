@@ -1,5 +1,27 @@
 module math {
 
+	export class RNG {
+		// @author: http://stackoverflow.com/questions/521295/javascript-random-seeds/19301306#19301306
+		m_w = 123456789;
+		m_z = 987654321;
+		mask = 0xffffffff;
+
+		// Takes any integer
+		constructor(seed: number = 123456789) {
+			this.m_w = seed;
+		}
+
+		// Returns number between 0 (inclusive) and 1.0 (exclusive),
+		// just like Math.random().
+		random() {
+			this.m_z = (36969 * (this.m_z & 65535) + (this.m_z >> 16)) & this.mask;
+			this.m_w = (18000 * (this.m_w & 65535) + (this.m_w >> 16)) & this.mask;
+			var result = ((this.m_z << 16) + this.m_w) & this.mask;
+			result /= 4294967296;
+			return result + 0.5;
+		}
+	}
+
 	export interface XY {
 		x: number; y: number;
 	}
