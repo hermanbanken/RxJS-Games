@@ -140,6 +140,7 @@ module Flow {
 
         run(game: Game): Rx.Observable<Stage> {
             var states = game.tiles.filter(e => e.type == "mousedown")
+                .filter(start => this.instance.isStartOrEnd(start))
                 .flatMap(start => {
                     var messingWith = this.instance.flowIndex(start);
                     var onFail = this.with(this.userFlows.with({ ps: [], index: messingWith }));
