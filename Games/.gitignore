@@ -11,3 +11,4 @@ node_modules
 ts/*.js
 ts/*.js.map
 *tsconfig.json
+*.tmp.txt
