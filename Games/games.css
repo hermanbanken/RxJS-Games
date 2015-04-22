@@ -50,6 +50,15 @@ ul { list-style: none; margin: 0; padding: 0; }
 	margin: 0 10px;
 }
 
+.dots-player {
+	display: inline-block;
+	width: 100px;
+	height: 100px;
+	content: "Your turn";
+}
+.dots-player.blue { background: blue; }
+.dots-player.red { background: red; }
+
 /* Reveal.js */
 .reveal section img.normal {
 	margin: 0px;

@@ -7,9 +7,6 @@
 
 module DotsAndBoxes {
 
-    var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
-    var rounds = 20;
-
     interface Stage {
         draw(ctx: CanvasRenderingContext2D, game: Game): void;
         run(game: Game): Rx.Observable<Stage>;
@@ -17,6 +14,24 @@ module DotsAndBoxes {
 
     class User {
         constructor(public id: string, public color: string) {}
+    }
+
+    interface GameEvents {
+        user: User;
+        evt: MouseEvt;
+    }
+
+    interface MouseEvt {
+        position: MouseOnBorder | MouseInGrid;
+        originalEvent: BaseJQueryEventObject;
+        type: string;
+    }
+
+    interface MouseOnBorder {
+        x: number; y: number; border: string;
+    }
+    interface MouseInGrid {
+        x: number; y: number; inGrid: boolean;
     }
 
     class Box extends math.Box {
@@ -27,36 +42,41 @@ module DotsAndBoxes {
             this.Owner.subscribe(this.draw.bind(this, ctx));
         }
         draw(ctx: CanvasRenderingContext2D, user: any) {
-            if (user instanceof User){
+            if (user instanceof User) {
+                ctx.fillStyle = user && user.color || "blue";
+                super.draw(ctx, false, false);
             }
-            else {
-            }
-            ctx.fillStyle = user && user.color || "blue";
-            super.draw(ctx, false, false);
         }
     }
 
-    class Line extends math.Line2D {
+    class Line extends math.Line2D implements Rx.Disposable {
         gridSize: number;
-        constructor(a: math.Point2D, b: math.Point2D, events: Rx.Observable<MouseEvt>, game: Game) {
+        private disposed = false;
+        private resources = [];
+
+        constructor(a: math.Point2D, b: math.Point2D, events: Rx.Observable<GameEvents>, game: Game) {
             super(a, b);
             this.gridSize = this.size();
 
-            events
+            var r = events
                 .map(e => {
-                    var u = new User("id", "red");
-                    if (e.type == 'mousemove')
-                        this.draw(game.ctx, u);
-                    if (e.type == 'mouseout')
+                    if (e.evt.type == 'mousemove')
+                        this.draw(game.ctx, e.user);
+                    if (e.evt.type == 'mouseout')
                         this.draw(game.ctx, false);
-                    return e.type == 'mousedown' ? u : null;
+                    return e.evt.type == 'mousedown' ? e.user : null;
                 })
                 .filter(_ => _ != null)
                 .subscribe(u => { 
                     this.owned = true;
-                    console.log("DOWN!");
                     this.owner.onNext(u);
                 });
+            this.resources.push(r);
+        }
+
+        dispose() {
+            this.resources = this.resources.filter(r => r.dispose() && false);
+            this.owner.dispose();
         }
 
         private owned = false;
@@ -70,6 +90,16 @@ module DotsAndBoxes {
             else
                 ctx.globalCompositeOperation = "destination-out";
 
+            this.path(ctx);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+ 
+            this.path(ctx);
+            ctx.strokeStyle = "gray";
+            ctx.stroke();
+        }
+
+        path(ctx: CanvasRenderingContext2D){
             var c = this.gridSize / 10;
 
             ctx.beginPath();
@@ -88,8 +118,6 @@ module DotsAndBoxes {
                 ctx.lineTo(this._0.x - c, this._0.y - c);
             }
             ctx.lineTo(this._0.x, this._0.y);
-            ctx.fill();
-            ctx.globalCompositeOperation = "source-over";
         }
     }
 
@@ -105,20 +133,28 @@ module DotsAndBoxes {
         }
     }
 
-    class NormalStage implements Stage {
+    interface OwnershipEvt {
+        box: Box; owner: User;
+    }
+
+    class NormalStage implements Stage, Rx.Disposable {
+        resources: Rx.Disposable[] = [];
+        boxOwner: Rx.Observable<{ box: Box; owner: User; }>;
+        lineOwner: Rx.Observable<{ line: Line; owner: User; }>;
+
         constructor(public points: number, public lines: Line[], public boxes: Box[], game: Game) {
             if(!lines.length || !boxes.length){
                 var top = new Grid<Line>((x, y) => {
                     var b = game.gridXYtoCanvasPoint(x, y),
                         c = game.gridXYtoCanvasPoint(x + 1, y);
-                    var l = new Line(b, c, game.dots.filter(NormalStage.lineMatches('top', x, y)), game);
+                    var l = new Line(b, c, game.eventsFor('top', x, y), game);
                     lines.push(l);
                     return l;
                 });
                 var left = new Grid<Line>((x, y) => {
                     var a = game.gridXYtoCanvasPoint(x, y + 1),
                         b = game.gridXYtoCanvasPoint(x, y);
-                    var l = new Line(a, b, game.dots.filter(NormalStage.lineMatches('left', x, y)), game);
+                    var l = new Line(a, b, game.eventsFor('left', x, y), game);
                     lines.push(l);
                     return l;
                 });
@@ -134,12 +170,23 @@ module DotsAndBoxes {
                     ));
                 }
             }
-        }
+            
+            this.boxOwner = Rx.Observable.merge(boxes.map(b =>
+                b.Owner.map(u => ({
+                    box: b,
+                    owner: u
+                }))
+            ));
 
-        static lineMatches(type, x, y){
-            return (e: MouseEvt) => {
-                return e.position['border'] && e.position['border'] == type && e.position.x == x && e.position.y == y;
-            }
+            this.lineOwner = Rx.Observable.merge(lines.map(b =>
+                b.Owner.map(u => ({
+                    line: b,
+                    owner: u
+                }))
+            ));
+
+            this.resources.push(this.boxOwner.subscribe(bo => game.score(bo.owner, bo.box)));
+            this.resources.push(this.lineOwner.subscribe(bo => game.turn(bo.owner, bo.line)));
         }
 
         draw(ctx: CanvasRenderingContext2D, game: Game) {
@@ -149,13 +196,22 @@ module DotsAndBoxes {
             // ctx.fillText("" + this.points, 25, 30);
             // var txt = "" + (rounds - this.turnsRemaining) + "/" + rounds;
             // ctx.fillText(txt, ctx.canvas.width - ctx.measureText(txt).width - 25, 30);
-
             this.lines.forEach(l => l.draw(ctx, true));
             this.boxes.forEach(b => b.draw(ctx, true));
         }
 
         run(game: Game) {
-            return Rx.Observable.never<Stage>();
+            return Rx.Observable.using(
+                () => this,
+                (resources) => {
+                    return Rx.Observable.never<Stage>();
+                }
+            );
+        }
+
+        dispose() {
+            this.resources.forEach(r => r.dispose());
+            this.lines.forEach(l => l.dispose());
         }
     }
 
@@ -190,19 +246,6 @@ module DotsAndBoxes {
         }
     }
 
-    interface MouseEvt {
-        position: MouseOnBorder | MouseInGrid;
-        originalEvent: BaseJQueryEventObject;
-        type: string;
-    }
-
-    interface MouseOnBorder {
-        x: number; y: number; border: string;
-    }
-    interface MouseInGrid {
-        x: number; y: number; inGrid: boolean;
-    }
-
     export class Game {
         public level: number = 0;
 
@@ -211,6 +254,8 @@ module DotsAndBoxes {
         public gridSize: number = 0;
         public marginTop: number = 5;
         public marginLeft: number = 5;
+        public user = new User("id", "red");
+        public users = [this.user, new User("id", "blue")];
 
         canvasXYtoGridXY(cx, cy): MouseOnBorder | MouseInGrid {
             cx -= this.marginLeft;
@@ -241,8 +286,8 @@ module DotsAndBoxes {
 
         gridXYtoCanvas(gx, gy) {
             return { 
-                x: /*this.gridSize + 2 **/ this.gridSize * gx + this.marginLeft,
-                y: /*this.gridSize + 2 **/ this.gridSize * gy + this.marginTop
+                x: this.gridSize * gx + this.marginLeft,
+                y: this.gridSize * gy + this.marginTop
             };
         }
 
@@ -251,10 +296,36 @@ module DotsAndBoxes {
             return new math.Point2D(c.x, c.y);
         }
 
-        constructor(public ctx: CanvasRenderingContext2D) {
+        constructor(public ctx: CanvasRenderingContext2D, public players: HTMLElement[]) {
             this.cols = 4;
             this.rows = 4;
             this.gridSize = (ctx.canvas.width - 2*this.marginLeft) / (this.rows);
+        }
+
+        private scores = new Rx.Subject<User>();
+        score(user: User, box: Box){
+            this.scores.onNext(user);
+        }
+
+        private turns = new Rx.Subject<User>();
+        turn(user: User, line: Line) {
+            this.turns.onNext(user);
+        }
+
+        eventsFor(type, x, y) {
+            return this.turns.scan(0, (p,u) => 1-p).startWith(0).map(ui => {
+                // var cur = this.users[ui].color;
+                // var pre = this.users[1 - ui].color;
+                console.log(this.players);
+                this.players[1-ui].style.opacity = "1";
+                this.players[ui].style.opacity = "0";
+                return this.dots.filter((e: MouseEvt) => {
+                    return e.position['border'] && e.position['border'] == type && e.position.x == x && e.position.y == y;
+                }).map(e => ({
+                    evt: e,
+                    user: this.users[ui]
+                }));
+            }).switch();
         }
 
         run(){
@@ -289,6 +360,7 @@ module DotsAndBoxes {
                     type: e.type
                 };
             });
+
         // All distinct positions the mouse visits
         public hoovers = this.mouse.distinctUntilChanged(e => e.position);
         // Ends hoovers if another hoover on a different element occurs.
@@ -310,8 +382,9 @@ module DotsAndBoxes {
 }
 
 Reveal.forSlide(s => s.currentSlide.id == 'g-dotsandboxes', s => {
-    var canvas = <HTMLCanvasElement> $("#dotsandboxes").get(0);
-    return new DotsAndBoxes.Game(canvas.getContext("2d")).run();
+    var canvas = <HTMLCanvasElement> $("#dotsandboxes", s.currentSlide).get(0);
+    var players = $(".dots-player", s.currentSlide).get();
+    return new DotsAndBoxes.Game(canvas.getContext("2d"), players).run();
 }).subscribe(e => {
     console.log("Loaded Dots & Boxes");
 });
