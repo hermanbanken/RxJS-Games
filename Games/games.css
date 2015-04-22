@@ -59,6 +59,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .dots-player.blue { background: blue; }
 .dots-player.red { background: red; }
 
+body table.game-adjuster { margin-top: 1em; }
+body table.game-adjuster td, body table.game-adjuster th { border-bottom: none; font-size: 50%; }
+
 /* Reveal.js */
 .reveal section img.normal {
 	margin: 0px;

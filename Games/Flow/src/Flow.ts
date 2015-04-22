@@ -30,9 +30,10 @@ module Flow {
         resources: Rx.Disposable[] = [];
         public instance;
         public userFlows;
-        constructor(private game: Game, public i:number = 0) {
+        constructor(private game: Game, public i: number = 0/*, public k: number = 4, public seed: number = 0*/) {
             console.debug("Instantiated Stage", i);
-            this.instance = Instance.simple(game.cols, game.rows, game.cols - 1);
+//            this.instance = Instance.simple(game.cols, game.rows, k).permutate(seed);
+            this.instance = game.instance(game.cols);
             this.userFlows = new Instance([]);
         }
 
@@ -171,8 +172,10 @@ module Flow {
     }
 
     export class Start extends NormalStage {
-        constructor(game: Game) {
-            super(game);
+        private args;
+        constructor(game: Game, ...args: any[]) {
+            super(game, args[0]/*, args[1], args[2]*/);
+            this.args = args;
         }
         draw(ctx: CanvasRenderingContext2D, game: Game) {
 //            console.warn("THOU SHALL NOT PASS!! (you need the third argument often)");
@@ -183,7 +186,7 @@ module Flow {
             // ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
         }
         run(game: Game){
-            return Rx.Observable.just(new NormalStage(game));
+            return Rx.Observable.just(new NormalStage(game, this.args[0]/*, this.args[1], this.args[2]*/));
         }
     }
 
@@ -205,8 +208,26 @@ module Flow {
     }
 }
 
+var data = $.getAsObservable<string>("Flow/flows.txt", null, 'text').map(l => l.data).shareReplay(1);
+
 Reveal.forSlide(s => s.currentSlide.id == 'g-flow', s => {
     var canvas = <HTMLCanvasElement> $("#flow", s.currentSlide).get(0);
-    var g = new Flow.Game(canvas.getContext("2d"));
-    return g.run(new Flow.Start(g));
+    
+    var strField = (key: string) => $(key).onAsObservable("change").map(e => e.target['value']).startWith($(key).val());
+    var numField = (key: string) => strField(key).map(v => parseInt(v));
+    
+    return Rx.Observable.combineLatest(
+        data,
+        numField("#flow-n"),
+        //numField("#flow-k"),
+        //strField("#flow-seed").map(s => s.split("").map(c => c.charCodeAt(0)).reduce((s,a) => s+a, 0)),
+        (d, n/*, k, s*/) => ({ n: n/*, k: k, seed: s*/, data: d })
+    ).flatMap(o => {
+        console.log(o);
+        canvas.height = 40 * o.n;
+        canvas.width = 40 * o.n;
+        var g = new Flow.Game(canvas.getContext("2d"), o.n);
+        g.data = o.data;
+        return g.run(new Flow.Start(g));
+    });
 }).subscribe(e => {});

@@ -76,5 +76,23 @@ module Flow {
             fs = fs.map((ps, i) => i == flow.index ? flow.ps : ps);
             return new Instance(fs);
         }
+
+        // @see: http://stackoverflow.com/questions/12926111/what-to-use-for-flow-free-like-game-random-level-creation
+        permutate(seed: number){
+            if (seed == 0)
+                return this;
+
+            var rng = new math.RNG(seed);
+            var fs = this.flows;
+
+            for (var n = 100; n--;){
+                var i = rng.random() * fs.length % fs.length;
+                if (fs[i].length < 3)
+                    break;
+                
+            }
+
+            return this;
+        }
     }
 }

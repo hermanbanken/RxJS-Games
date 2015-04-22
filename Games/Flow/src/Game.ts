@@ -5,6 +5,7 @@
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 /// <reference path="../../ts/rx-reveal.ts" />
 /// <reference path="Games.ts" />
+/// <reference path="Instance.ts" />
 
 module Flow {
 
@@ -15,11 +16,11 @@ module Flow {
 
     export class Game extends games.GridMapping {
         public level: number = 0;
-
+        public data: string = '';
         public gridSize: number = 0;
 
-        constructor(public ctx: CanvasRenderingContext2D) {
-            super(5, 5, [ctx.canvas.width, ctx.canvas.height]);
+        constructor(public ctx: CanvasRenderingContext2D, n : number = 5) {
+            super(n, n, [ctx.canvas.width, ctx.canvas.height]);
             this.gridSize = this.gridH;
         }
 
@@ -34,6 +35,33 @@ module Flow {
                     e => console.error(e),
                     () => console.log("Completed game")
                 );
+        }
+
+        public instance(n: number = 4){
+            if (!this.data)
+                throw new Error("Load data first");
+            var cs = this.data.split(/[\s\n]/);
+            var frames = [];
+            
+            for (var i = 0; i < cs.length; i++){
+                var size = parseInt(cs[i]);
+                if (isNaN(size))
+                    continue;
+                i += 2;
+                frames[size] = cs.slice(i, i+size).join("\n");
+                i += size-1;
+            }
+            
+            var flows = [];
+            frames[n].split(/\n/g).forEach((l, y) => {
+                l.split("").forEach((t, x) => {
+                    if (t != ".") {
+                        flows[t] = flows[t] || [];
+                        flows[t].push(new math.Point2D(x, y));
+                    }
+                });
+            });
+            return new Instance(Object.keys(flows).map(k => flows[k]));
         }
 
         // Observable of Grid movements, emits grid coordinates
