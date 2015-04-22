@@ -4,6 +4,7 @@
 /// <reference path="../../ts/math.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 /// <reference path="../../ts/rx-reveal.ts" />
+/// <reference path="../../Flow/src/Games.ts" />
 
 module DotsAndBoxes {
 
@@ -18,20 +19,7 @@ module DotsAndBoxes {
 
     interface GameEvents {
         user: User;
-        evt: MouseEvt;
-    }
-
-    interface MouseEvt {
-        position: MouseOnBorder | MouseInGrid;
-        originalEvent: BaseJQueryEventObject;
-        type: string;
-    }
-
-    interface MouseOnBorder {
-        x: number; y: number; border: string;
-    }
-    interface MouseInGrid {
-        x: number; y: number; inGrid: boolean;
+        evt: games.MouseEvt;
     }
 
     class Box extends math.Box {
@@ -121,18 +109,6 @@ module DotsAndBoxes {
         }
     }
 
-    class Grid<T> {
-        store: T[][] = [];
-        constructor(public generate: ((x:number,y:number) => T)){}
-        get(x: number, y: number){
-            if (!this.store[x])
-                this.store[x] = [];
-            if (!this.store[x][y])
-                this.store[x][y] = this.generate(x, y);
-            return this.store[x][y];
-        }
-    }
-
     interface OwnershipEvt {
         box: Box; owner: User;
     }
@@ -144,23 +120,23 @@ module DotsAndBoxes {
 
         constructor(public points: number, public lines: Line[], public boxes: Box[], game: Game) {
             if(!lines.length || !boxes.length){
-                var top = new Grid<Line>((x, y) => {
-                    var b = game.gridXYtoCanvasPoint(x, y),
-                        c = game.gridXYtoCanvasPoint(x + 1, y);
+                var top = new games.Grid<Line>((x, y) => {
+                    var b = game.gridToCanvasPoint(x, y),
+                        c = game.gridToCanvasPoint(x + 1, y);
                     var l = new Line(b, c, game.eventsFor('top', x, y), game);
                     lines.push(l);
                     return l;
                 });
-                var left = new Grid<Line>((x, y) => {
-                    var a = game.gridXYtoCanvasPoint(x, y + 1),
-                        b = game.gridXYtoCanvasPoint(x, y);
+                var left = new games.Grid<Line>((x, y) => {
+                    var a = game.gridToCanvasPoint(x, y + 1),
+                        b = game.gridToCanvasPoint(x, y);
                     var l = new Line(a, b, game.eventsFor('left', x, y), game);
                     lines.push(l);
                     return l;
                 });
                 for (var i = 0, x = 0, y = 0; y < game.rows; i++ , x = (x + 1) % game.cols, y = x == 0 ? y + 1 : y) {
                     boxes.push(new Box(
-                        game.gridXYtoCanvasPoint(x + 0.5, y + 0.5), 
+                        game.gridToCanvasPoint(x + 0.5, y + 0.5), 
                         game.gridSize * 8 / 10, [
                             top.get(x, y),
                             top.get(x, y + 1),
@@ -246,60 +222,17 @@ module DotsAndBoxes {
         }
     }
 
-    export class Game {
+    export class Game extends games.BorderSnapGridMapping {
         public level: number = 0;
 
-        public cols: number = 0;
-        public rows: number = 0;
-        public gridSize: number = 0;
-        public marginTop: number = 5;
-        public marginLeft: number = 5;
         public user = new User("id", "red");
         public users = [this.user, new User("id", "blue")];
 
-        canvasXYtoGridXY(cx, cy): MouseOnBorder | MouseInGrid {
-            cx -= this.marginLeft;
-            cy -= this.marginTop;
-            cx /= this.gridSize;
-            cy /= this.gridSize;
-
-            var border = [
-                {o: Math.abs(cx - Math.round(cx)), b:'left'},
-                {o: Math.abs(cy - Math.round(cy)), b:'top'}
-            ].sort((a, b) => a.o - b.o)[0];
-
-            if (border.o < 1/8){
-                return {
-                    x: Math.floor(cx+1/8),
-                    y: Math.floor(cy+1/8),
-                    border: border.b
-                }
-            } 
-            else {
-                return {
-                    x: ~~cx,
-                    y: ~~cy,
-                    inGrid: true
-                };               
-            }
-        }
-
-        gridXYtoCanvas(gx, gy) {
-            return { 
-                x: this.gridSize * gx + this.marginLeft,
-                y: this.gridSize * gy + this.marginTop
-            };
-        }
-
-        gridXYtoCanvasPoint(gx, gy) {
-            var c = this.gridXYtoCanvas(gx, gy);
-            return new math.Point2D(c.x, c.y);
-        }
+        public gridSize: number;
 
         constructor(public ctx: CanvasRenderingContext2D, public players: HTMLElement[]) {
-            this.cols = 4;
-            this.rows = 4;
-            this.gridSize = (ctx.canvas.width - 2*this.marginLeft) / (this.rows);
+            super(4, 4, [ctx.canvas.width, ctx.canvas.height], 1 / 8, [5, 5]);
+            this.gridSize = this.gridW;
         }
 
         private onBox = new Rx.Subject<User>();
@@ -341,7 +274,7 @@ module DotsAndBoxes {
         eventsFor(type, x, y) {
             return this.turns
                 .map(ui => {
-                    return this.dots.filter((e: MouseEvt) => {
+                    return this.dots.filter((e: games.MouseEvt) => {
                         return e.position['border'] && e.position['border'] == type && e.position.x == x && e.position.y == y;
                     }).map(e => ({
                         evt: e,
@@ -378,7 +311,7 @@ module DotsAndBoxes {
             .map(e => {
                 var p = Game.getMousePos(e.target, e);
                 return {
-                    position: this.canvasXYtoGridXY(p.x, p.y),
+                    position: this.canvasToGrid(p.x, p.y),
                     originalEvent: null,
                     type: e.type
                 };
