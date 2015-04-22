@@ -5,37 +5,36 @@
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 /// <reference path="../../ts/rx-reveal.ts" />
 /// <reference path="Games.ts" />
+/// <reference path="Instance.ts" />
 
 // http://stackoverflow.com/questions/12926111/what-to-use-for-flow-free-like-game-random-level-creation
 module Flow {
 
-    interface Stage {
-        draw(ctx: CanvasRenderingContext2D, game: Game): void;
-        run(game: Game): Rx.Observable<Stage>;
+    var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
+
+    function drawCircle(ctx: CanvasRenderingContext2D, r: number, p: math.XY) {
+        ctx.beginPath();
+        ctx.arc(p.x + r, p.y + r, r, 0, 2 * Math.PI, false);
+        ctx.fill();
     }
 
-    class User {
-        constructor(public id: string, public color: string) { }
+    function drawLine(ctx, l: math.Line2D){
+        ctx.beginPath();
+        ctx.moveTo(l._0.x, l._0.y);
+        ctx.lineTo(l._1.x, l._1.y);
+        ctx.stroke();
     }
 
-    function draw(i: Instance, ctx: CanvasRenderingContext2D){
-
-    }
-
-    class NormalStage implements Stage, Rx.Disposable {
+    class NormalStage {
         resources: Rx.Disposable[] = [];
-       
+        public instance;
+        public userFlows;
         constructor(game: Game) {
-                // var top = new Grid<Line>((x, y) => {
-                //     var b = game.gridToCanvasPointPoint(x, y),
-                //         c = game.gridToCanvasPointPoint(x + 1, y);
-                //     var l = new Line(b, c, game.eventsFor('top', x, y), game);
-                //     lines.push(l);
-                //     return l;
-                // });
+            this.instance = Instance.simple(game.cols, game.rows, game.cols - 1);
+            this.userFlows = new Instance([]);
         }
 
-        draw(ctx: CanvasRenderingContext2D, game: Game) {
+        draw(ctx: CanvasRenderingContext2D, game: Game, inProgress?: Flow) {
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
             for (var x = 0; x <= game.cols; x++){
@@ -55,75 +54,131 @@ module Flow {
                 ctx.stroke();
             }
 
-            game.instance.flows.forEach((f,i) => {
+            // Ends
+            ctx.save();
+            ctx.translate(game.gridW * .1, game.gridH * .1);
+            this.instance.flows.forEach((f, i) => {
+                ctx.fillStyle = colors[i % colors.length];
+                var p_a: math.XY = game.gridToCanvasPoint(f[0]),
+                    p_b: math.XY = game.gridToCanvasPoint(f[f.length - 1]);
+                // Begin / end circles:
+                drawCircle(ctx, game.gridH / 2 * .8, p_a);
+                drawCircle(ctx, game.gridH / 2 * .8, p_b);
+            });
+            ctx.restore();
+
+            // Lines
+            ctx.save();
+            ctx.translate(game.gridW * .5, game.gridH * .5);
+            if(inProgress)
+            console.log("Drawing, userflows.length = ", this.userFlows.with(inProgress).flows.length, inProgress.index);
+            else 
+            console.warn("No progress")
+            this.userFlows.with(inProgress).flows.forEach((f, i) => {
+                ctx.strokeStyle = colors[i % colors.length];
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.lineWidth = game.gridH / 3;
+                
+                for (var j = 1; j < f.length; j++){
+                    var p_a = game.gridToCanvasPoint(f[j - 1]),
+                        p_b = game.gridToCanvasPoint(f[j]);
+                    // Line between points:
+                    drawLine(ctx, new math.Line2D(p_a, p_b));
+                    // Rounded corner:
+                    ctx.translate(-game.gridW / 6, -game.gridH / 6);
+                    drawCircle(ctx, game.gridH / 2 / 3, p_b);
+                    ctx.translate(game.gridW / 6, game.gridH / 6);
+                }
+            });
+            ctx.restore();
+
+            // Draw instance;
+            this.instance.flows.forEach((f, i) => {
                 var l = String.fromCharCode("a".charCodeAt(0) + i);
-                f.forEach((p,i) => {
+                f.forEach((p, i) => {
                     var c = game.gridToCanvas(p.x + 0.5, p.y + 0.5);
                     var txt = "" + l + i;
-                    ctx.fillText(txt, c.x - ctx.measureText(txt).width/2, c.y);        
+                    ctx.fillText(txt, c.x - ctx.measureText(txt).width / 2, c.y);
                 })
-            })
-            console.log(game.instance);
+            });
 
-            // ctx.font = "18px Arial";
-            // ctx.fillText("" + this.points, 25, 30);
-            // var txt = "" + (rounds - this.turnsRemaining) + "/" + rounds;
-            // ctx.fillText(txt, ctx.canvas.width - ctx.measureText(txt).width - 25, 30);
         }
 
-        run(game: Game) {
-            return Rx.Observable.using(
-                () => this,
-                (resources) => {
-                    return Rx.Observable.never<Stage>();
+        dragSequence(game: Game, start: math.XY): Rx.Observable<{ good: boolean; flow: Flow; uf: Instance; }> {
+            console.log("Down", start);
+            // The new flow
+            var uf = this.userFlows;
+            var flow: Flow = { index: this.instance.flowIndex(start), ps: [start] };
+            uf = this.userFlows.with(flow);
+
+            var subsequent: Rx.Observable<math.XY> = game.tiles
+                .tap(m => console.log("move", m))
+                .takeWhile(e => e.type == "mousemove")
+                .distinctUntilChanged()
+                .takeUntil(game.tiles.filter(e => e.type == "mouseup"));
+
+            return subsequent.scan({ good: false, flow: flow, uf: uf }, (acc, box) => {
+                console.log("SCAN");
+                var ps = acc.flow.ps;
+                if (this.adjacent(ps[ps.length - 1], box) && !acc.uf.contains(box)) {
+                    var flow = {
+                        ps: ps.concat(box),
+                        index: acc.flow.index
+                    }
+                    var isFinalised = this.instance.isStartOrEnd(box) && this.instance.flowIndex(box) === acc.flow.index;
+                    return {
+                        good: isFinalised,
+                        flow: flow,
+                        uf: acc.uf.with(flow)
+                    };
                 }
-                );
+                return { good: false, flow: acc.flow, uf: acc.uf };
+            });
         }
 
-        dispose() {
-            this.resources.forEach(r => r.dispose());
+        run(game: Game): Rx.Observable<Stage> {
+            console.log("NORMAL");
+            var states = game.tiles.filter(e => e.type == "mousedown")
+                .map(start => 
+                    this.dragSequence(game, start)
+                        .tap(s => {
+                            console.log("DS: ",s.flow.ps.length, s.flow);
+                            this.draw(game.ctx, game, s.flow)
+                        }, e => console.error("DS error: ",e), () => console.warn("DS ended"))
+                        .skipWhile(s => !s.good).last()
+                )
+                .switch()
+                .map(state => {
+                    console.log("Resulting state: ", state);
+                    var s = new NormalStage(game);
+                    s.instance = this.instance;
+                    s.userFlows = state.uf;
+                    return s;
+                });
+            return states;
+//            return Rx.Observable.never<Stage>();
+        }
+
+        adjacent(p1: math.XY, p2: math.XY): boolean {
+            return p1.x == p2.x && Math.abs(p1.y - p2.y) == 1
+                || p1.y == p2.y && Math.abs(p1.x - p2.x) == 1;
         }
     }
 
-    class Instance {
-        constructor(public flows: math.Point2D[][]){}
-
-        static simple(w: number, h: number, n_flows: number): Instance {
-            var perflow = (w * h / n_flows);
-            var flow = [];
-            var flows = [flow];
-            var totalflows = 1;
-
-            // For every cell
-            for (var i = 0, x = 0, y = 0; i < w * h; i++) {
-                // When over 'flowing', pun intended
-                if (i >= flows.length * perflow){
-                    flow = [];
-                    flows.push(flow);
-                }
-                flow.push(new math.Point2D(x, y));
-                // Increase
-                x += y % 2 == 0 ? 1 : -1;
-                if (x < 0 || x >= w){
-                    y += 1;
-                    x = Math.min(w - 1, Math.max(0, x));
-                }
-            }
-
-            return new Instance(flows);
-        }
-    }
-
-    class Start extends NormalStage {
+    export class Start extends NormalStage {
         constructor(game: Game) {
             super(game);
         }
         draw(ctx: CanvasRenderingContext2D, game: Game) {
-            super.draw(ctx, game);
+//            console.warn("THOU SHALL NOT PASS!! (you need the third argument often)");
+//            super.draw(ctx, game);
 
             // var txt = "connect the two dots to start";
             // ctx.font = "18px Arial";
             // ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
+        }
+        run(game: Game){
+            return Rx.Observable.just(new NormalStage(game));
         }
     }
 
@@ -139,80 +194,16 @@ module Flow {
             ctx.font = "18px Arial";
             ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
         }
-        run(game: Game) {
+        run(game: Game): Rx.Observable<Stage> {
             return Rx.Observable.just(new Start(game));
         }
-    }
-
-    export class Game extends games.GridMapping {
-        public level: number = 0;
-
-        public gridSize: number = 0;
-        public user = new User("id", "red");
-        public users = [this.user, new User("id", "blue")];
-
-        public instance = Instance.simple(this.cols, this.rows, this.cols-1);
-        constructor(public ctx: CanvasRenderingContext2D) {
-            super(5, 5, [ctx.canvas.width, ctx.canvas.height]);
-            this.gridSize = this.gridH;
-        }
- 
-        run() {
-            return Rx.Observable.just(new Start(this))
-                .flatScan<Stage, Stage>(
-                s => { s.draw(this.ctx, this); return s.run(this).doAction(_ => _.draw(this.ctx, this)).last() },
-                s => Rx.Observable.just(s)
-                )
-                .tap(
-                s => s.draw(this.ctx, this),
-                e => console.error(e),
-                () => console.log("Completed game")
-                );
-        }
-
-        // Mouse events
-        static getMousePos(canvas, evt) {
-            var rect = canvas.getBoundingClientRect();
-            return {
-                x: evt.clientX - rect.left,
-                y: evt.clientY - rect.top
-            };
-        }
-
-        // Observable of Grid movements, emits grid coordinates
-        public mouse = $(this.ctx.canvas).onAsObservable("mousemove mousedown mouseup")
-            .map(e => {
-            var p = Game.getMousePos(e.target, e);
-            return {
-                position: this.canvasToGrid(p.x, p.y),
-                originalEvent: null,
-                type: e.type
-            };
-        });
-
-        // All distinct positions the mouse visits
-        public hoovers = this.mouse.distinctUntilChanged(e => e.position);
-        // Ends hoovers if another hoover on a different element occurs.
-        public hooverInOut = this.hoovers.filter(e => e.type == 'mousemove').flatMap(h => {
-            return Rx.Observable.just(h).concat(this.hoovers.filter(h2 => {
-                return h.position.x != h2.position.x || h.position.y != h2.position.y || h.position['border'] != h2.position['border'];
-            }).take(1).map(_ => ({
-                position: h.position,
-                type: "mouseout",
-                originalEvent: _.originalEvent
-            })));
-        });
-
-        public dots = Rx.Observable.merge(
-            this.mouse.filter(m => m.type == 'mousedown' || m.type == 'mouseup'),
-            this.hooverInOut
-            );
     }
 }
 
 Reveal.forSlide(s => s.currentSlide.id == 'g-flow', s => {
     var canvas = <HTMLCanvasElement> $("#flow", s.currentSlide).get(0);
-    return new Flow.Game(canvas.getContext("2d")).run();
+    var g = new Flow.Game(canvas.getContext("2d"));
+    return g.run(new Flow.Start(g));
 }).subscribe(e => {
     console.log("Loaded Flow");
 });

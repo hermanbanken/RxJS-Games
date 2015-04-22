@@ -2,6 +2,7 @@
 /// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
 /// <reference path="../../ts/rx.flatscan.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
+/// <reference path="../../Flow/src/Games.ts" />
 
 module Connected {
 
@@ -257,22 +258,14 @@ module Connected {
 		public down = $(this.ctx.canvas).onAsObservable("mousedown");
 		public up = $(window).onAsObservable("mouseup");
 
-        static getMousePos(canvas, evt) {
-            var rect = canvas.getBoundingClientRect();
-            return {
-                x: evt.clientX - rect.left,
-                y: evt.clientY - rect.top
-            };
-        }
-
 		// Observable of Grid movements, emits grid coordinates
 		public dots = $(this.ctx.canvas).onAsObservable("mousemove")
 			.filter(e => e.which === 1)
-            .map(e => {
-                var p = Game.getMousePos(e.target, e);
-                return this.canvasXYtoGridXY(p.x, p.y);
-            })
-            .distinctUntilChanged()
+			.map(e => {
+				var p = games.Utils.getMousePos(<HTMLCanvasElement>e.target, <JQueryMouseEventObject>e);
+				return this.canvasXYtoGridXY(p.x, p.y);
+			})
+			.distinctUntilChanged()
 			.filter(p => p.inGrid && p.x >= 0 && p.x < this.cols && p.y >= 0 && p.y < this.rows);
 	}
 }

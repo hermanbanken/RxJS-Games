@@ -1,5 +1,9 @@
 module math {
 
+	export interface XY {
+		x: number; y: number;
+	}
+
 	export class Point2D {
 		constructor(public x: number, public y: number){}
 		add(other: Point2D){
@@ -29,6 +33,9 @@ module math {
 		}
 		map(fx: (number) => number, fy: (number) => number){
 			return new Point2D(fx(this.x), fy(this.y));
+		}
+		equals(other: Point2D){
+			return this.x === other.x && this.y === other.y;
 		}
 	}
 

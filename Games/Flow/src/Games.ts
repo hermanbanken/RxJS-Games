@@ -1,4 +1,30 @@
+/// <reference path="../../ts/math.ts" />
 module games {
+
+    export interface MouseEvt {
+        position: MouseOnBorder | MouseInGrid;
+        originalEvent: BaseJQueryEventObject;
+        type: string;
+    }
+
+    export interface MouseOnBorder {
+        x: number; y: number; border: string;
+    }
+    export interface MouseInGrid {
+        x: number; y: number; inGrid: boolean;
+    }
+
+    export class Utils {
+        // Mouse events
+        static getMousePos(canvas: HTMLCanvasElement, evt: { clientX: number; clientY: number; }) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+    }
+
     export class GridMapping {
         public gridW: number;
         public gridH: number;
@@ -7,7 +33,7 @@ module games {
             this.gridH = (canvas_wh[1] - margins_tl[0] * 2) / rows;
             console.log("Grid", this.gridW, this.gridH);
         }
-        canvasToGrid(x: any, y: any = null): ({ x: number; y:number }) {
+        canvasToGrid(x: any, y: any = null): math.XY {
             if (typeof x === 'object' && x.x && x.y) {
                 y = x.y;
                 x = x.x;
@@ -18,7 +44,7 @@ module games {
             y /= this.gridH;
             return { x: x, y: y };
         }
-        gridToCanvas(x: any, y: any = null) {
+        gridToCanvas(x: any, y: any = null): math.XY {
             if (typeof x === 'object' && typeof x.x === 'number' && typeof x.y === 'number') {
                 y = x.y;
                 x = x.x;
@@ -33,19 +59,6 @@ module games {
             var c = this.gridToCanvas(gx, gy);
             return new math.Point2D(c.x, c.y);
         }
-    }
-
-    export interface MouseEvt {
-        position: MouseOnBorder | MouseInGrid;
-        originalEvent: BaseJQueryEventObject;
-        type: string;
-    }
-
-    export interface MouseOnBorder {
-        x: number; y: number; border: string;
-    }
-    export interface MouseInGrid {
-        x: number; y: number; inGrid: boolean;
     }
 
     export class BorderSnapGridMapping extends GridMapping {

@@ -189,36 +189,9 @@ module DotsAndBoxes {
             this.resources.forEach(r => r.dispose());
             this.lines.forEach(l => l.dispose());
         }
-    }
 
-    class Start extends NormalStage {
-        constructor(game: Game) {
-            super(0, [], [], game);
-            //super(0, 0, [new Sprite(0,3,0),new Sprite(1,3,0),new Sprite(2,3,0),new Sprite(3,3,0),new Sprite(4,3,0),new Sprite(5,3,0)]);
-        }
-        draw(ctx: CanvasRenderingContext2D, game: Game) {
-            super.draw(ctx, game);
-
-            // var txt = "connect the two dots to start";
-            // ctx.font = "18px Arial";
-            // ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
-        }
-    }
-
-    class ScoreStage implements Stage {
-        constructor(public points: number) { }
-        draw(ctx: CanvasRenderingContext2D, game: Game) {
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            var txt = "You scored " + this.points + " points!";
-            ctx.font = "24px Arial";
-            ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2);
-
-            txt = "Click to restart";
-            ctx.font = "18px Arial";
-            ctx.fillText(txt, ctx.canvas.width / 2 - ctx.measureText(txt).width / 2, ctx.canvas.height / 2 + 100);
-        }
-        run(game: Game) {
-            return Rx.Observable.just(new Start(game));
+        static start(game: Game) {
+            return new NormalStage(0, [], [], game);
         }
     }
 
@@ -285,7 +258,7 @@ module DotsAndBoxes {
         }
 
         run(){
-            return Rx.Observable.just(new Start(this))
+            return Rx.Observable.just(NormalStage.start(this))
                 .flatScan<Stage, Stage>(
                     s => { s.draw(this.ctx, this); return s.run(this).doAction(_ => _.draw(this.ctx, this)).last() },
                     s => Rx.Observable.just(s)
@@ -297,19 +270,10 @@ module DotsAndBoxes {
                 );
         }
 
-        // Mouse events
-        static getMousePos(canvas, evt) {
-            var rect = canvas.getBoundingClientRect();
-            return {
-                x: evt.clientX - rect.left,
-                y: evt.clientY - rect.top
-            };
-        }
-
         // Observable of Grid movements, emits grid coordinates
         public mouse = $(this.ctx.canvas).onAsObservable("mousemove mousedown mouseup")
             .map(e => {
-                var p = Game.getMousePos(e.target, e);
+                var p = games.Utils.getMousePos(<HTMLCanvasElement>e.target, <JQueryMouseEventObject>e);
                 return {
                     position: this.canvasToGrid(p.x, p.y),
                     originalEvent: null,
