@@ -312,8 +312,9 @@ module DotsAndBoxes {
             this.turns.onNext(user);
         }
 
+        initialTurn = Math.floor(Math.random() + .5);
         eventsFor(type, x, y) {
-            return this.turns.scan(0, (p,u) => 1-p).startWith(0).map(ui => {
+            return this.turns.scan(this.initialTurn, (p, u) => 1 - p).startWith(this.initialTurn).map(ui => {
                 // var cur = this.users[ui].color;
                 // var pre = this.users[1 - ui].color;
                 console.log(this.players);
