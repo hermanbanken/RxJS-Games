@@ -16,6 +16,7 @@ module Minesweeper {
     class Box extends math.Box {
         public neighbors: Box[] = [];
         revealed = false;
+        flagged = false;
 
         private revealer = new Rx.BehaviorSubject<boolean>(null);
         public Reveal: Rx.Observable<boolean> = this.revealer.filter(_ => _ != null).take(1);
@@ -27,10 +28,22 @@ module Minesweeper {
             super(centre, size, size);
             this.events = events;
 
-            events.subscribe(_ => this.reveal() && this.draw(ctx))
+            events.subscribe(ev => {
+                if(ev.originalEvent.which === 3)
+                    this.toggleFlag();
+                else 
+                    this.reveal();
+                this.draw(ctx)
+            })
+        }
+
+        toggleFlag() {
+            if (!this.revealed)
+                this.flagged = !this.flagged;
         }
 
         reveal() {
+            if (this.flagged) return true;
             if (!this.revealed){
                 this.revealed = true;
                 if (!this.is_bomb)
@@ -57,20 +70,32 @@ module Minesweeper {
 
         draw(ctx: CanvasRenderingContext2D) {
             if (this.revealed) {
-                ctx.fillStyle = this.is_bomb && "red" || "#ccc";
+                if(this.is_bomb)
+                    ctx.fillStyle = "red";
+                else 
+                    ctx.fillStyle = "#ccc";
+
                 super.draw(ctx, false, false);
+                if (this.is_bomb) {
+                    this.fillText(ctx, String.fromCharCode(0xf1e2), "black", "FontAwesome")
+                }
                 if (!this.is_bomb) {
                     var neighbor_bombs = this.neighbors.filter(n => n.is_bomb).length
                     if (neighbor_bombs > 0) {
-                        ctx.font = this.height-2 + "px Arial";
-                        ctx.fillStyle = "blue";
-                        ctx.fillText(neighbor_bombs.toString(), this.centre.x - ctx.measureText(neighbor_bombs.toString()).width/2, this.centre.y + this.height/2 - 2);   
+                        this.fillText(ctx, neighbor_bombs.toString(), "blue", "Arial")
                     }
                 }
-            } 
+            } else {
+                ctx.fillStyle = "white";
+                super.draw(ctx, false, false);
+
+                if (this.flagged){
+                    this.fillText(ctx, String.fromCharCode(0xf024), "green", "FontAwesome")
+                }
+            }            
 
             ctx.save();
-            ctx.strokeStyle = "#000";
+            ctx.strokeStyle = "black";
             this.lines().forEach(l => {
                 ctx.beginPath();
                 ctx.moveTo(l._0.x, l._0.y);
@@ -78,6 +103,12 @@ module Minesweeper {
                 ctx.stroke();
             })
             ctx.restore();
+        }
+
+        fillText(ctx:CanvasRenderingContext2D, text:string, color:string, font:string) {
+            ctx.font = this.height-4 + "px " + font;
+            ctx.fillStyle = color;
+            ctx.fillText(text, this.centre.x - ctx.measureText(text).width/2, this.centre.y + this.height/2 - 4);
         }
     }
 
@@ -191,12 +222,12 @@ module Minesweeper {
                 var p = Game.getMousePos(e.target, e);
                 return {
                     position: this.canvasToGrid(p.x, p.y),
-                    originalEvent: null,
+                    originalEvent: e,
                     type: e.type
                 };
             });
 
-        public dots = this.mouse.filter(m => m.type == 'mousedown' || m.type == 'mouseup');
+        public dots = this.mouse.filter(m => m.type == 'mousedown');
     }
 }
 
