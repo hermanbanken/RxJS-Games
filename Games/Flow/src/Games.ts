@@ -19,7 +19,7 @@ module games {
             return { x: x, y: y };
         }
         gridToCanvas(x: any, y: any = null) {
-            if (typeof x === 'object' && x.x && x.y) {
+            if (typeof x === 'object' && typeof x.x === 'number' && typeof x.y === 'number') {
                 y = x.y;
                 x = x.x;
             }
@@ -29,7 +29,7 @@ module games {
             };
         }
 
-        gridToCanvasPoint(gx, gy) {
+        gridToCanvasPoint(gx: any, gy: any = null) {
             var c = this.gridToCanvas(gx, gy);
             return new math.Point2D(c.x, c.y);
         }
