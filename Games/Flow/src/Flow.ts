@@ -29,8 +29,8 @@ module Flow {
         resources: Rx.Disposable[] = [];
         public instance;
         public userFlows;
-        constructor(game: Game, public i:number = 0) {
-            console.log("Instantiated Stage", i);
+        constructor(private game: Game, public i:number = 0) {
+            console.debug("Instantiated Stage", i);
             this.instance = Instance.simple(game.cols, game.rows, game.cols - 1);
             this.userFlows = new Instance([]);
         }
@@ -102,7 +102,6 @@ module Flow {
         }
 
         dragSequence(game: Game, start: math.XY): Rx.Observable<{ good: boolean; flow: Flow; uf: Instance; }> {
-            console.log("Down", start);
             // The new flow
             var uf = this.userFlows;
             var flow: Flow = { index: this.instance.flowIndex(start), ps: [start] };
@@ -115,41 +114,50 @@ module Flow {
 
             return subsequent.scan({ good: false, flow: flow, uf: uf }, (acc, box) => {
                 var ps = acc.flow.ps;
-                if (this.adjacent(ps[ps.length - 1], box) && !acc.uf.contains(box)) {
+                var dup = games.Utils.indexOf(ps, Instance.equals.bind(Instance, box));
+                
+                // Short-wired
+                if (typeof dup === 'number') {
+                    var flow = {
+                        ps: ps.slice(0, dup+1),
+                        index: acc.flow.index
+                    }
+                    return { good: false, flow: flow, uf: acc.uf.with(flow) };
+                }
+                // Normal new cell: add
+                if (!acc.good && this.adjacent(ps[ps.length - 1], box) && !acc.uf.contains(box) && (!this.instance.isStartOrEnd(box) || this.instance.flowIndex(box) === acc.flow.index)) {
                     var flow = {
                         ps: ps.concat(box),
                         index: acc.flow.index
                     }
                     var isFinalised = this.instance.isStartOrEnd(box) && this.instance.flowIndex(box) === acc.flow.index;
-                    return {
-                        good: isFinalised,
-                        flow: flow,
-                        uf: acc.uf.with(flow)
-                    };
+                    return { good: isFinalised, flow: flow, uf: acc.uf.with(flow) };
                 }
-                return { good: false, flow: acc.flow, uf: acc.uf };
+                // Fail!
+                return { good: acc.good, flow: acc.flow, uf: acc.uf };
             });
         }
 
         run(game: Game): Rx.Observable<Stage> {
-            console.log("Running Stage", this.i);
-            console.log("NORMAL");
             var states = game.tiles.filter(e => e.type == "mousedown")
-                .flatMap(start =>
-                    this.dragSequence(game, start)
+                .flatMap(start => {
+                    var messingWith = this.instance.flowIndex(start);
+                    var onFail = this.with(this.userFlows.with({ ps: [], index: messingWith }));
+                    return this.dragSequence(game, start)
                         .tap(s => this.draw(game.ctx, game, s.flow))
                         .skipWhile(s => !s.good).last()
-                )
-                .map(state => {
-                    console.log("Resulting state: ", state);
-                    var s = new NormalStage(game, this.i+1);
-                    s.instance = this.instance;
-                    s.userFlows = state.uf;
-                    return s;
-                }).tap(e => { }, e => console.error("E10", e), () => console.warn("E10 Done!"))
-                .take(1)
-                .catch(Rx.Observable.just(this));
+                        .map(state => this.with(state.uf))
+                        .tap(e => { }, e => console.error("E10", e), () => console.warn("E10 Done!"))
+                        .catch(Rx.Observable.just(onFail))
+                }).take(1);
             return states;
+        }
+
+        with(userFlows: Instance){
+            var s = new NormalStage(this.game, this.i + 1);
+            s.instance = this.instance;
+            s.userFlows = userFlows;
+            return s;        
         }
 
         adjacent(p1: math.XY, p2: math.XY): boolean {
@@ -197,6 +205,4 @@ Reveal.forSlide(s => s.currentSlide.id == 'g-flow', s => {
     var canvas = <HTMLCanvasElement> $("#flow", s.currentSlide).get(0);
     var g = new Flow.Game(canvas.getContext("2d"));
     return g.run(new Flow.Start(g));
-}).subscribe(e => {
-    console.log("Loaded Flow");
-});
+}).subscribe(e => {});

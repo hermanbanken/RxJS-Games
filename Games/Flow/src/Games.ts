@@ -23,6 +23,13 @@ module games {
                 y: evt.clientY - rect.top
             };
         }
+
+        static indexOf<T>(list: T[], selector: (t: T) => boolean): number | boolean {
+            return list.reduce(
+                (b, item, i) => typeof b === 'number' ? b : selector(item) && i,
+                false
+            );
+        }
     }
 
     export class GridMapping {

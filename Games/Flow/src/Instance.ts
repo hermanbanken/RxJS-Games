@@ -36,10 +36,22 @@ module Flow {
         }
 
         contains(p: math.XY): boolean {
-            return this.flows.reduce((b1, flow, f_index) => b1 || flow.reduce((b2, fp) => b2 || fp.x == p.x && fp.y == p.y, false), false);
+            return typeof this.flowIndex(p) == 'number';
         }
-        flowIndex(p: math.XY): number {
-            return this.flows.reduce((b1, flow, f_index) => b1 >= 0 ? b1 : flow.reduce((b2, fp) => b2 || fp.x == p.x && fp.y == p.y, false) && f_index, -1);
+
+        private rowIndex(flow: number | math.XY[], p: math.XY): number | boolean {
+            var f = typeof flow == 'number' ? this.flows[<number>flow] : <math.XY[]>flow;
+            return f.reduce(
+                (b, fp, i) => typeof b === 'number' ? b : fp.x == p.x && fp.y == p.y && i, 
+                false
+            );
+        }
+
+        flowIndex(p: math.XY): number | boolean {
+            return this.flows.reduce(
+                (b, flow, f_index) => typeof b === 'number' ? b : typeof this.rowIndex(flow, p) === 'number' ? f_index : false,
+                false
+            );
         }
 
         isStartOrEnd(p: math.XY): boolean {
