@@ -10,7 +10,8 @@
 // http://stackoverflow.com/questions/12926111/what-to-use-for-flow-free-like-game-random-level-creation
 module Flow {
 
-    var colors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
+    var originalColors = ["#629E60", "#E9C03A", "#B74133", "#5374ED"];
+    var colors = ["#1F00FF", "#D10000", "#EDEF00", "#4F8000", "#9FFFFF", "#D57C00", "#D200FF", "#87302A", "#65007A"];
 
     function drawCircle(ctx: CanvasRenderingContext2D, r: number, p: math.XY) {
         ctx.beginPath();
