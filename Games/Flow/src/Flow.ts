@@ -90,14 +90,16 @@ module Flow {
             ctx.restore();
 
             // Draw instance;
-            this.instance.flows.forEach((f, i) => {
-                var l = String.fromCharCode("a".charCodeAt(0) + i);
-                f.forEach((p, i) => {
-                    var c = game.gridToCanvas(p.x + 0.5, p.y + 0.5);
-                    var txt = "" + l + i;
-                    ctx.fillText(txt, c.x - ctx.measureText(txt).width / 2, c.y);
-                })
-            });
+            if (false) {
+                this.instance.flows.forEach((f, i) => {
+                    var l = String.fromCharCode("a".charCodeAt(0) + i);
+                    f.forEach((p, i) => {
+                        var c = game.gridToCanvas(p.x + 0.5, p.y + 0.5);
+                        var txt = "" + l + i;
+                        ctx.fillText(txt, c.x - ctx.measureText(txt).width / 2, c.y);
+                    })
+                });
+            }
 
         }
 
@@ -146,9 +148,9 @@ module Flow {
                     var onFail = this.with(this.userFlows.with({ ps: [], index: messingWith }));
                     return this.dragSequence(game, start)
                         .tap(s => this.draw(game.ctx, game, s.flow))
-                        .skipWhile(s => !s.good).last()
+                        .skipWhile(s => !s.good)
+                        .last()
                         .map(state => this.with(state.uf))
-                        .tap(e => { }, e => console.error("E10", e), () => console.warn("E10 Done!"))
                         .catch(Rx.Observable.just(onFail))
                 }).take(1);
             return states;
