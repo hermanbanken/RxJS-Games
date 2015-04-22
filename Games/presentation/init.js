@@ -10,7 +10,7 @@ Reveal.initialize({
 	keyboardCondition: function(){
 		return true;
 	},
-	minScale: 1,
+	minScale: 0.1,
     maxScale: 1,
 	keyboard: {
 		219: 'prev',
