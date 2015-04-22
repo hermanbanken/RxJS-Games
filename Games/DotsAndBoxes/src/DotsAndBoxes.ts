@@ -186,7 +186,7 @@ module DotsAndBoxes {
             ));
 
             this.resources.push(this.boxOwner.subscribe(bo => game.score(bo.owner, bo.box)));
-            this.resources.push(this.lineOwner.subscribe(bo => game.turn(bo.owner, bo.line)));
+            this.resources.push(this.lineOwner.subscribe(bo => game.linePlaced(bo.owner, bo.line)));
         }
 
         draw(ctx: CanvasRenderingContext2D, game: Game) {
@@ -302,34 +302,53 @@ module DotsAndBoxes {
             this.gridSize = (ctx.canvas.width - 2*this.marginLeft) / (this.rows);
         }
 
-        private scores = new Rx.Subject<User>();
+        private onBox = new Rx.Subject<User>();
         score(user: User, box: Box){
-            this.scores.onNext(user);
+            this.onBox.onNext(user);
         }
 
-        private turns = new Rx.Subject<User>();
-        turn(user: User, line: Line) {
-            this.turns.onNext(user);
+        private onLine = new Rx.Subject<User>();
+        linePlaced(user: User, line: Line) {
+            this.onLine.onNext(user);
         }
 
+        /* Random first player */
         initialTurn = Math.floor(Math.random() + .5);
+
+        /* Events that define who is on turn */
+        turns = Rx.Observable.merge(
+            // Normal turns (a line was placed)
+            this.onLine.map(_ => 1),
+            // A 'box' was filled, do 'turn' twice at score moment
+            this.onBox
+                // When two boxes fill at the same time: we need a window
+                .window(this.onLine)
+                // Need the count of this list
+                .flatMap(l => l.count())
+                // Only non-empty
+                .filter(a => a > 0)
+                // -> void
+                .map(_ => 1)
+            )
+            .scan(this.initialTurn, (p, u) => 1 - p)
+            .startWith(this.initialTurn)
+            .tap(ui => {
+                this.players[1 - ui].style.opacity = "1";
+                this.players[ui].style.opacity = "0";                    
+            });
+ 
+        /* The mouse events one Line needs */
         eventsFor(type, x, y) {
-            return Rx.Observable.merge(
-                this.turns.map(_ => 1),
-                this.scores.distinctUntilChanged().map(_ => 1) // Do duplicate 'turn' at score moment
-            ).scan(this.initialTurn, (p, u) => 1 - p).startWith(this.initialTurn).map(ui => {
-                // var cur = this.users[ui].color;
-                // var pre = this.users[1 - ui].color;
-                console.log(this.players);
-                this.players[1-ui].style.opacity = "1";
-                this.players[ui].style.opacity = "0";
-                return this.dots.filter((e: MouseEvt) => {
-                    return e.position['border'] && e.position['border'] == type && e.position.x == x && e.position.y == y;
-                }).map(e => ({
-                    evt: e,
-                    user: this.users[ui]
-                }));
-            }).switch();
+            return this.turns
+                .map(ui => {
+                    return this.dots.filter((e: MouseEvt) => {
+                        return e.position['border'] && e.position['border'] == type && e.position.x == x && e.position.y == y;
+                    }).map(e => ({
+                        evt: e,
+                        user: this.users[ui]
+                    }));
+                })
+                .switch()
         }
 
         run(){
