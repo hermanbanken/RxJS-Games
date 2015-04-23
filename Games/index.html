@@ -126,15 +126,14 @@ var dt = Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame)
 	.tupled()
 	.map((p: number[]) => p[1] - p[0])
 // SPACE hit &amp; release
-var spaces = $(document.body)
+var spaces = $(window)
 	.onAsObservable("keydown keyup")
 	.filter(e => e['keyCode'] === 32)
-	.map(e => e.type === 'keydown')
-	.startWith(false);</code></pre>
+	.map(e => e.type === 'keydown');</code></pre>
 			<pre><code data-trim class="ts">// Per frame
 var frames = dt
 	.withLatestFrom(
-		this.spaces, 
+		this.spaces.startWith(false), 
 		(t,s) => { return { time: t, space: s }; 
 	});</code></pre>
 			</section>

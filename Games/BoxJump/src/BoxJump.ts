@@ -23,13 +23,21 @@ module BoxJump {
 		public player: Player;
 		constructor(public ctx: CanvasRenderingContext2D) {}
 
+        public spaces = $(window)
+            .onAsObservable("keydown keyup")
+            .filter(e => e['keyCode'] === 32)
+            .map(e => e.type === 'keydown');
+        public singlespace = this.spaces.take(1);
+
 		public run(){
             this.level = 0;
             var l = Rx.Observable.interval(1000 / 30, Rx.Scheduler.requestAnimationFrame)
             	// Get time delta
-                .map(_ => new Date().getTime()).tupled().map((p: number[]) => p[1] - p[0])
+            	.startWith(0)
+                .map(_ => new Date().getTime())
+                .tupled().map((p: number[]) => p[1] - p[0])
             	// Update game state
-                .withLatestFrom(this.spaces, (t, s) => { return { time: t, space: s }; })
+                .withLatestFrom(this.spaces.startWith(false), (t, s) => { return { time: t, space: s }; })
                 .scan(
                 	new BoxJump.Player(new math.Box(new math.Point2D(0, 0), 20, 20), null),
                 	(s, t) => s.update(t.time, t.space)
@@ -63,20 +71,13 @@ module BoxJump {
                     this.ctx.fillText(txt, this.ctx.canvas.width / 2 - this.ctx.measureText(txt).width / 2, this.ctx.canvas.height / 2);
                 });
 
-            return this.singlespace.flatMap(_ => l).map(_ => 1)
+            return l.map(_ => 1)
                 .concat(this.singlespace.map(_ => {
 	                this.level = 0;
 	                return 1;
             	})).repeat();
                 
 		}
-
-        public spaces = $(document.body)
-			.onAsObservable("keydown keyup")
-			.filter(e => e['keyCode'] === 32)
-			.map(e => e.type === 'keydown')
-			.startWith(false);
-        public singlespace = this.spaces.skip(1).take(1);
 	}
 
 	export class Player{
