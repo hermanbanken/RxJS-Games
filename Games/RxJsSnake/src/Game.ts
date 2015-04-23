@@ -62,17 +62,19 @@ class Snake implements Game {
     
     start(canvas:HTMLCanvasElement): Rx.Observable<State> {
         var ctx = canvas.getContext("2d");
+        var disposables = [];
 
         // Globally: disable up/down scrolling
-        $(document.body).keydownAsObservable()
+        var d = $(document.body).keydownAsObservable()
             .filter(ke => ke.keyCode === KeyCodes.up || ke.keyCode === KeyCodes.down || ke.keyCode === 32)
-            .subscribe(e => e.preventDefault());
+            .subscribe(e => { e.preventDefault(); e.stopPropagation(); });
+        disposables.push(d);
 
         var directions = this.keyEvent
             // Start with S
             //.filter(e => e.keyCode === 32).take(1).flatMap(_ => this.keyEvent)
             .filter(ke => !!KeyCodes[ke.keyCode])
-            .do(e => e.preventDefault())
+            .do(e => { e.preventDefault(); e.stopPropagation(); })
             .map(ke => toDirection(ke.keyCode))
             .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])
             .filter(d => d.length == 2)
@@ -108,10 +110,18 @@ class Snake implements Game {
             .withLatestFrom(candy, (d, c) => [d, c])
             .scan(State.initial(), (s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource))
         
-        return restart.startWith(true)
-            .select(_ => game)    
-            .switch()
-            .tap(draw.bind(this, ctx))
+        disposables.push(candySource);
+
+        return Rx.Observable.using(
+            function() { return new Rx.CompositeDisposable(disposables); },
+            function(resource) {
+                return restart.startWith(true)
+                    .select(_ => game)
+                    .switch()
+                    .tap(draw.bind(this, ctx))
+            }
+        );
+
     }
 }
 
@@ -215,7 +225,8 @@ function afill<T>(n: number, v: (number) => T){
     return Array.apply(null, new Array(n)).map((_, i: number) => v(i));
 }
 
-Reveal.forSlide(s => s.currentSlide.id == 'g-snake', s => {
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-snake').get().length > 0, s => {
+    console.log("Snake");
     var canvas = <HTMLCanvasElement> $("#snake").get(0);
     return new Snake().start(canvas);
 }).subscribe(e => {});

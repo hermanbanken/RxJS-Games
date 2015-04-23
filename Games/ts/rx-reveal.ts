@@ -33,8 +33,9 @@ Reveal.onReady = revealEvent("ready");
 Reveal.forSlide = function <T>(selector: (e: reveal.Slide) => boolean, generator: (s: reveal.Slide) => Rx.Observable<T>) {
     return Rx.Observable.merge(Reveal.onReady, Reveal.onSlideChanged)
         .filter(selector)
+        .distinctUntilChanged(e => selector(e))
         .flatMap(e => generator(e).takeUntil(
-            Reveal.onSlideChanged.filter(e2 => e2.indexh != e.indexh)
+            Reveal.onSlideChanged.filter(e2 => !selector(e2))
         ));
 }
 

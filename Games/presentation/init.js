@@ -6,17 +6,27 @@ Reveal.initialize({
 	history: true,
 	center: true,
 	touch: false,
+	overview: false,
 	transition: 'slide', // none/fade/slide/convex/concave/zoom
-	keyboardCondition: function(){
-		return true;
-	},
+	// keyboardCondition: function(){
+	// 	console.log("keyboardCondition");
+	// 	if(window.event.keyCode == 219 || window.event.keyCode == 221)
+	// 		return true;
+	// 	if(window.event.shiftKey){
+	// 		return true;
+	// 	}
+	// 	return false;
+	// },
 	minScale: 0.1,
     maxScale: 1,
 	keyboard: {
 		219: 'prev',
 		221: 'next',
+		83: null,
 		37: null, // left/right for games
+		38: null,
 		39: null, // left/right for games
+		40: null,
 		32: null, // SPACE for games
 		//13: 'next', // go to the next slide when the ENTER key is pressed
 		//27: function() {}, // do something custom when ESC is pressed
