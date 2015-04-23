@@ -144,7 +144,9 @@ module Breakout {
                 if(ke['keyCode'] == this.paddleKeys[1]) return -1;
             });
 
-		constructor(public ctx: CanvasRenderingContext2D) {
+		constructor () {}
+
+        start (ctx: CanvasRenderingContext2D) {
 
 			var state = { paddle: Paddle.initial(), ball: Ball.initial(), obstacles: Obstacle.initial() };
 
@@ -163,7 +165,7 @@ module Breakout {
                     (t, dir) => ({dt: t.dt, dir: dir})
                 );
 
-            events.scan(
+            return events.scan(
             		{ paddle: Paddle.initial(), ball: Ball.initial(), obstacles: Obstacle.initial(), lives: 3 },
             		(state, e) => {
             			var ball = null, lives = 0;
@@ -186,7 +188,7 @@ module Breakout {
                             lives: state.lives + lives
                         };
                     }
-            	).subscribe(state => {
+            	).tap(state => {
             		ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             		ctx.fillStyle = "white";
 					state.paddle.draw(ctx);
@@ -197,7 +199,7 @@ module Breakout {
 	}
 }
 
-$("#breakout").clickAsObservable().take(1).map(e => e.target).subscribe(c => {
-    var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
-    var game = new Breakout.Game(ctx);
-});
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-breakout').get().length > 0, s => {
+    var canvas = <HTMLCanvasElement> $("#breakout").get(0);
+    return new Breakout.Game().start(canvas.getContext("2d"));
+}).subscribe(e => {});
