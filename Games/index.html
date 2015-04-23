@@ -1,0 +1,315 @@
+<html>
+<head>
+	<link href='RxJsPong/silkscreen.css' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="node_modules/reveal.js/css/reveal.css">
+	<link rel="stylesheet" href="node_modules/reveal.js/css/theme/black.css" id="theme">
+	<!-- Code syntax highlighting -->
+	<link rel="stylesheet" href="node_modules/reveal.js/lib/css/zenburn.css">
+	<!-- Printing and PDF exports -->
+	<script>
+		var link = document.createElement( 'link' );
+		link.rel = 'stylesheet';
+		link.type = 'text/css';
+		link.href = window.location.search.match( /print-pdf/gi ) ? 'node_modules/reveal.js/css/print/pdf.css' : 'node_modules/reveal.js/css/print/paper.css';
+		document.getElementsByTagName( 'head' )[0].appendChild( link );
+	</script>
+	<link href='games.css' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="highlight/styles/monokai_sublime.css">
+</head>
+
+<body>
+
+<div class="reveal">
+	<!-- Any section element inside of this container is displayed as a slide -->
+	<div class="slides">
+		<section>
+			<h1>10 Games in <span style="text-transform:none;">RxJS</span></h1>
+			<img class="normal" src="presentation/Rx_Logo_512.png" />
+			<p>
+				<small>By
+				<a href="https://github.com/hermanbanken">Herman Banken</a> / 
+				<a href="https://github.com/jgadelange">Jeffrey de Lange</a>
+				</small>
+			</p>
+		</section>
+
+		<section>
+			<h1>Games:</h1>
+			<ol>
+				<li><a href="#/g-snake">Snake</a></li>
+				<li><a href="#/g-boxjump">BoxJump</a></li>
+				<li><a href="#/g-connected">Connected</a></li>
+				<li><a href="#/g-mekelbird">FlappyBird</a></li>
+				<li><a href="#/g-pong">Pong</a></li>
+				<li><a href="#/g-breakout">Breakout</a></li>
+				<li><a href="#/g-dotsandboxes">Dots &amp; Boxes</a></li>
+				<li><a href="#/g-typer">Typeria</a></li>
+				<li><a href="#/g-flow">Flow</a></li>
+				<li><a href="#/g-minesweeper">Minesweeper</a></li>
+			</ol>
+		</section>
+
+		<section id="g-snake">
+			<section>
+			<h1>Snake</h1>
+			<canvas id="snake" width="600" height="450" style="background:black; border: 3px solid #ffffff; margin: 1cm auto 0;display: block"></canvas>
+			</section>
+			<section>
+				<h1>Snake <small>main loop</small></h1>
+				<pre><code data-trim class="ts">var game = Rx.Observable
+    .interval(100)
+    .withLatestFrom(directions, (t, d) => d)
+    .withLatestFrom(candy, (d, c) => [d, c])
+    .scan(
+    	State.initial(), 
+    	(s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource)
+    )</code></pre>
+			</section>
+
+			<section>
+			<h1>Snake <small>data sources</small></h1>
+			<pre><code data-trim class="ts">var directions = this.keyEvent.filter(validKeyCode)
+    .do(e => { e.preventDefault(); e.stopPropagation(); })
+    .map(ke => toDirection(ke.keyCode))
+    .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])
+    .filter(d => d.length == 2)
+    .startWith([]);</code></pre>
+			<pre><code data-trim class="ts">function toDirection(keyCode: number){
+    switch(keyCode){
+        case KeyCodes.w:
+        case KeyCodes.up: return [0,-1];
+        case KeyCodes.s:
+        case KeyCodes.down: return [0,1];
+        case KeyCodes.a:
+        case KeyCodes.left: return [-1,0];
+        case KeyCodes.d:
+        case KeyCodes.right: return [1,0];
+        default: return [];
+    }
+}</code></pre>
+			</section>
+
+			<section>
+			<h1>Snake <small>data sources</small></h1>
+			<pre><code data-trim class="ts">var candySource = new Rx.Subject<number>();
+var candy = candySource.startWith(0)
+    .select(_ => ~~(Math.pow(Math.random(),6)*4)+1)
+    // Generate shape using 'Monster'-function
+    .select(Monster)
+    // Translate
+    .select(ps => { var origin = Point2D.random(); return ps.map(p => p.move([origin.x, origin.y])) })
+    .select((m: Point2D[]) => {
+        if(m.length == 1)
+            return Rx.Observable.just<Point2D[]>(m);
+        // Timeout larger monsters
+        return Rx.Observable.just<Point2D[]>(m)
+            .merge(Rx.Observable.just([]).delay(4000).selectMany(_ => Rx.Observable.throw<Point2D[]>(new Error("Timeout"))));
+    })
+    .switch()
+    .retry()
+    .replay(_ => _, 1);</code></pre>
+			</section>
+		</section>
+
+		<section id="g-boxjump">
+		<section>
+			<h1>BoxJump</h1>
+			<canvas id="boxjump" width="800" height="300" style="background:white; margin: 1cm auto 0;display: block"></canvas>
+		</section>
+
+		<section>
+			<h1>BoxJump <small>data sources</small></h1>
+			<pre><code data-trim class="ts">// Delta time
+var dt = Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame)
+	.map(_ => new Date().getTime())
+	.tupled()
+	.map((p: number[]) => p[1] - p[0])
+// SPACE hit &amp; release
+var spaces = $(window)
+	.onAsObservable("keydown keyup")
+	.filter(e => e['keyCode'] === 32)
+	.map(e => e.type === 'keydown');</code></pre>
+			<pre><code data-trim class="ts">// Per frame
+var frames = dt
+	.withLatestFrom(
+		this.spaces.startWith(false), 
+		(t,s) => { return { time: t, space: s }; 
+	});</code></pre>
+			</section>
+		</section>
+		</section>
+
+		<section id="g-connected">
+		<section>
+			<h1>Connected</h1>
+			<div id="connected-game" style="width:400px;height:500px;display:inline-block">
+				<canvas id="connected" width="400" height="500" style="background:#ddd; display: block; width: 100%; height: 100%;"></canvas>
+				<div class="multiplier">
+					<span>1x</span>
+					<span>5x</span>
+					<span>10x</span>
+					<div class="bg"></div>
+				</div>
+			</div>
+		</section>
+		<section>
+			<h1>Connected <small>grid</small></h1>
+			<pre><code data-trim class="ts">// Canvas position conversion
+class GridMapping {
+    constructor(rows, cols, canvas_w, canvas_h);
+    canvasToGrid(x: number, y: number): math.XY;
+    gridToCanvas(x: number, y: number): math.XY;
+}</code></pre>
+			</section>
+
+			<section>
+			<h1>Connected <small>circles</small></h1>
+			<pre><code data-trim class="ts">class Sprite {
+	constructor(x: number, y: number, color: number) {}
+	down(y: number = 1){
+		return new Sprite(this.x, this.y + y, this.color);
+	}
+	draw(ctx, game, selected = false) {
+		var p = game.gridXYtoCanvas(this.x, this.y);
+		/* Draw circle @ p */
+		if(selected){ /* Draw inner circle @ p */ }	
+	}
+}</code></pre></section>
+		</section>
+
+		<section>
+			<h1>Connected <small>animation? 1/2</small></h1>
+			<pre><code data-trim class="ts">// Animate
+var duration = 500;//ms
+var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/duration*1000/30);
+return t
+	.takeWhile(t => t < 1)
+	.map<Stage>(t => this.atTime(t))
+	.concat((function(){
+		// What will be next
+		var then = this
+			.clearedAnimations()
+			.addPoints(removedDots.length);
+		return then.turnsRemaining > 0 ? 
+			Rx.Observable.just<Stage>(then) : 
+			Rx.Observable.just<Stage>(
+				new ScoreStage(then.points)
+			).delay(500).startWith(then);
+	}).call(this));</code></pre>
+</section>
+
+		<section>
+			<h1>Connected <small>animation? 2/2</small></h1>
+			<pre><code data-trim class="ts">/* When drawing */
+var d = /* sprite */
+var yoffset = d.tween &amp;&amp; d.tween.from ? 
+	(d.tween.from.y - s.y) * (1-Math.min(1, t)) * game.gridSize * 2 :
+	0;
+
+class AnimatedSprite extends Sprite {
+	public tween: any;
+	/* NOW: with tween! */
+	down(y: number = 1){
+		var t = super.down(y);
+		t.tween = { 
+			from: this.tween ? this.tween.from : this, 
+			to: t 
+		};
+		return t;
+	}
+	draw(ctx, game, selected = false, yoffset = 0) {
+		ctx.translate(0, yoffset);
+		super.draw(ctx, game, selected);
+		ctx.translate(0, -yoffset);
+	}
+}</code></pre></section>
+		</section>
+
+		</section>
+
+		<section id="g-mekelbird">
+			<h1>MekelBird</h1>
+			<canvas id="flappy" width="400" height="500" style="background:#99CBD4; display: inline-block;"></canvas>
+		</section>
+
+		<section id="g-pong">
+			<h1>Pong</h1>
+			<canvas id="pong" width="800" height="400" style="background:black; border: 3px solid #ffffff; margin: 1cm auto 0;display: block"></canvas>
+		</section>
+
+		<section id="g-breakout">
+			<h1>Breakout</h1>
+			<canvas id="breakout" width="800" height="600" style="background:black; border: 3px solid #ffffff; margin: 1cm auto 0;display: block"></canvas>
+		</section>
+
+		<section id="g-dotsandboxes">
+			<h1>Dots &amp; Boxes</h1>
+			<div class="dots-player blue"></div>
+			<canvas id="dotsandboxes" width="300" height="300" style="display: inline-block;background: white"></canvas>
+			<div class="dots-player red"></div>
+		</section>
+
+		<section id="g-typer">
+			<h1>Typeria</h1>
+			<canvas id="typer" width="320" height="400" style="display: inline-block;background: white"></canvas>
+		</section>
+
+		<section id="g-flow">
+			<h1>Flow</h1>
+			<canvas id="flow" width="300" height="300" style="display: inline-block;background: white"></canvas>
+			<table style="color: white;" class='game-adjuster'>
+			<tr><th>Size:</th><td>4 <input type="range" id="flow-n" min="4" max="14" value="5"> 14</td></tr>
+			<!--
+			<tr><th>Flows:</th><td>4 <input type="range" id="flow-k" min="4" max="14" value="4"> 14</td></tr>
+			<tr><th>RNG seed:</th><td><input type="text" id="flow-seed" value="RP101"></td></tr>
+			-->
+			</table>
+		</section>
+
+		<section id="g-minesweeper">
+			<h1>Minesweeper</h1>
+			<canvas id="minesweeper" width="300" height="300" style="display: inline-block;background: white" oncontextmenu="return false"></canvas>
+		</section>
+
+		<section>
+			<h1>Lessons learned</h1>
+			<ul>
+				<li>Drawing in .subscribe is fine, until you want to animate</li>
+				<li>Animation difficult in general (FP, anyone?)</li>
+				<li>Mostly: <pre><code data-trim class="ts">var deltaT
+	.witLatestFrom(some inputs)
+	.scan(State.initial(), (s: State, i: Inputs) => State)
+	.subscribe(draw)</code></pre></li>
+				<li>Add .retry() if you throw Error's on death</li>
+				<li>Add .replay() if you complete on Win-state</li>
+				<li>Add an outer-sequence to deal with levels</li>
+			</ul>
+		</section>
+
+	</div>
+</div>
+
+<div style="width: 800px; margin: 0 auto;">
+<h1 style="color:white;text-align:center;">Look-And-Say</h1>
+<div style="width:800px; height: 600px; background:white; overflow: auto;">
+	<ul class='nowrap' id="lookandsay">
+		
+	</ul>
+</div>
+</div>
+
+<script src="node_modules/jquery/dist/jquery.min.js"></script>
+<script src="node_modules/rx/dist/rx.all.min.js"></script>
+<script src="node_modules/rx-jquery/rx.jquery.min.js"></script>
+
+<script src="node_modules/reveal.js/lib/js/head.min.js"></script>
+<script src="node_modules/reveal.js/js/reveal.js"></script>
+
+<script src="presentation/init.js"></script>
+<script>
+//Rx.config['longStackSupport'] = true;
+</script>
+<script src="build.js"></script>
+
+</body>
