@@ -15,6 +15,7 @@
 	</script>
 	<link href='games.css' rel='stylesheet' type='text/css'>
 	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="highlight/styles/monokai_sublime.css">
 </head>
 
 <body>
@@ -50,8 +51,73 @@
 		</section>
 
 		<section id="g-snake">
+			<section>
 			<h1>Snake</h1>
 			<canvas id="snake" width="600" height="450" style="background:black; border: 3px solid #ffffff; margin: 1cm auto 0;display: block"></canvas>
+			</section>
+			<section>
+				<h1>Snake <small>main loop</small></h1>
+				<pre><code data-trim class="ts">
+var game = Rx.Observable
+    .interval(100)
+    .withLatestFrom(directions, (t, d) => d)
+    .withLatestFrom(candy, (d, c) => [d, c])
+    .scan(
+    	State.initial(), 
+    	(s: State, tuple) => eat(move(s,tuple[0]), tuple[1], candySource)
+    )
+            </code></pre>
+			</section>
+
+			<section>
+			<h1>Snake <small>data sources</small></h1>
+			<pre><code data-trim class="ts">
+var directions = this.keyEvent.filter(validKeyCode)
+    .do(e => { e.preventDefault(); e.stopPropagation(); })
+    .map(ke => toDirection(ke.keyCode))
+    .distinctUntilChanged(null, (a,b) => a[0] == b[0] || a[1] == b[1])
+    .filter(d => d.length == 2)
+    .startWith([]);
+            </code></pre>
+			<pre><code data-trim class="ts">
+function toDirection(keyCode: number){
+    switch(keyCode){
+        case KeyCodes.w:
+        case KeyCodes.up: return [0,-1];
+        case KeyCodes.s:
+        case KeyCodes.down: return [0,1];
+        case KeyCodes.a:
+        case KeyCodes.left: return [-1,0];
+        case KeyCodes.d:
+        case KeyCodes.right: return [1,0];
+        default: return [];
+    }
+}
+			</code></pre>
+			</section>
+
+			<section>
+			<h1>Snake <small>data sources</small></h1>
+			<pre><code data-trim class="ts">
+var candySource = new Rx.Subject<number>();
+var candy = candySource.startWith(0)
+    .select(_ => ~~(Math.pow(Math.random(),6)*4)+1)
+    // Generate shape using 'Monster'-function
+    .select(Monster)
+    // Translate
+    .select(ps => { var origin = Point2D.random(); return ps.map(p => p.move([origin.x, origin.y])) })
+    .select((m: Point2D[]) => {
+        if(m.length == 1)
+            return Rx.Observable.just<Point2D[]>(m);
+        // Timeout larger monsters
+        return Rx.Observable.just<Point2D[]>(m)
+            .merge(Rx.Observable.just([]).delay(4000).selectMany(_ => Rx.Observable.throw<Point2D[]>(new Error("Timeout"))));
+    })
+    .switch()
+    .retry()
+    .replay(_ => _, 1);
+            </code></pre>
+			</section>
 		</section>
 
 		<section id="g-boxjump">
