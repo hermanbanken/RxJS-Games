@@ -141,6 +141,7 @@ var frames = dt
 		</section>
 
 		<section id="g-connected">
+		<section>
 			<h1>Connected</h1>
 			<div id="connected-game" style="width:400px;height:500px;display:inline-block">
 				<canvas id="connected" width="400" height="500" style="background:#ddd; display: block; width: 100%; height: 100%;"></canvas>
@@ -151,6 +152,80 @@ var frames = dt
 					<div class="bg"></div>
 				</div>
 			</div>
+		</section>
+		<section>
+			<h1>Connected <small>grid</small></h1>
+			<pre><code data-trim class="ts">// Canvas position conversion
+class GridMapping {
+	constructor(rows, cols, canvas_w, canvas_h);
+    canvasToGrid(x: number, y: number): math.XY;
+    gridToCanvas(x: number, y: number): math.XY;
+}</code></pre>
+			</section>
+
+			<section>
+			<h1>Connected <small>circles</small></h1>
+			<pre><code data-trim class="ts">class Sprite {
+	constructor(x: number, y: number, color: number) {}
+	down(y: number = 1){
+		return new Sprite(this.x, this.y + y, this.color);
+	}
+	draw(ctx, game, selected = false) {
+		var p = game.gridXYtoCanvas(this.x, this.y);
+		/* Draw circle @ p */
+		if(selected){ /* Draw inner circle @ p */ }	
+	}
+}</code></pre></section>
+		</section>
+
+		<section>
+			<h1>Connected <small>animation? 1/2</small></h1>
+			<pre><code data-trim class="ts">// Animate
+var duration = 500;//ms
+var t = Rx.Observable.interval(duration/30, Rx.Scheduler.requestAnimationFrame).map(i => i/duration*1000/30);
+return t
+	.takeWhile(t => t < 1)
+	.map<Stage>(t => this.atTime(t))
+	.concat((function(){
+		// What will be next
+		var then = this
+			.clearedAnimations()
+			.addPoints(removedDots.length);
+		return then.turnsRemaining > 0 ? 
+			Rx.Observable.just<Stage>(then) : 
+			Rx.Observable.just<Stage>(
+				new ScoreStage(then.points)
+			).delay(500).startWith(then);
+	}).call(this));</code></pre>
+</section>
+
+		<section>
+			<h1>Connected <small>animation? 2/2</small></h1>
+			<pre><code data-trim class="ts">/* When drawing */
+var d = /* sprite */
+var yoffset = d.tween &amp;&amp; d.tween.from ? 
+	(d.tween.from.y - s.y) * (1-Math.min(1, t)) * game.gridSize * 2 :
+	0;
+
+class AnimatedSprite extends Sprite {
+	public tween: any;
+	/* NOW: with tween! */
+	down(y: number = 1){
+		var t = super.down(y);
+		t.tween = { 
+			from: this.tween ? this.tween.from : this, 
+			to: t 
+		};
+		return t;
+	}
+	draw(ctx, game, selected = false, yoffset = 0) {
+		ctx.translate(0, yoffset);
+		super.draw(ctx, game, selected);
+		ctx.translate(0, -yoffset);
+	}
+}</code></pre></section>
+		</section>
+
 		</section>
 
 		<section id="g-mekelbird">

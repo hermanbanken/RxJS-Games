@@ -35,7 +35,7 @@ module games {
     export class GridMapping {
         public gridW: number;
         public gridH: number;
-        constructor(public rows: number, public cols: number, private canvas_wh: number[], private margins_tl: number[] = [0, 0]) {
+        constructor(public rows: number, public cols: number, private canvas_wh: number[], protected margins_tl: number[] = [0, 0]) {
             this.gridW = (canvas_wh[0] - margins_tl[1] * 2) / cols;
             this.gridH = (canvas_wh[1] - margins_tl[0] * 2) / rows;
             console.log("Grid", this.gridW, this.gridH);
