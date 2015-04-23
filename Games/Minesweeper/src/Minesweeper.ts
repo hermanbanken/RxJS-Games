@@ -53,7 +53,7 @@ module Minesweeper {
         }
 
         initialize() {
-            this.is_bomb = Math.random() < .05;
+            this.is_bomb = Math.random() < .1;
             Rx.Observable.merge(
                     this.neighbors.map(_ => _.Reveal)
                 ).filter(
@@ -190,7 +190,7 @@ module Minesweeper {
         /* The mouse events one Line needs */
         eventsFor(type, x, y) {
             return this.dots.filter((e: games.MouseEvt) => {
-                return Math.floor(e.position.x) == x && Math.floor(e.position.y) == y;
+                return Math.floor(e.position.x + .5) == x && Math.floor(e.position.y +.5) == y;
             });
         }
 
