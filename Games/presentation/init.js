@@ -19,8 +19,7 @@ Reveal.initialize({
 	// },
 	minScale: 0.1,
     maxScale: 1,
-    height: 750,
-	keyboard: {
+  	keyboard: {
 		219: 'prev',
 		221: 'next',
 		83: null,

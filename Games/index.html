@@ -25,7 +25,7 @@
 	<div class="slides">
 		<section>
 			<h1>10 Games in <span style="text-transform:none;">RxJS</span></h1>
-			<img class="normal" src="presentation/Rx_Logo_512.png" />
+			<img class="normal" src="presentation/Rx_Logo_512.png" height="300" />
 			<p>
 				Live demo: <a href="http://fptudelft.github.io/RxJS-Games/Games/">http://fptudelft.github.io/RxJS-Games/Games/</a>
 			</p>
@@ -300,11 +300,20 @@ shipAndBullets.withLatestFrom(
 		</section>
 
 		<section>
-			<h1>Contributions</h1>
+			<section>
+			<h1>Contributions 1/2</h1>
+			<ul>
+				<li>10 games :)</li>
+				<li>2569 LOC TypeScript (CLOC), probably *some* duplication</li>
+				<li>Reveal.js (this presentation) Rx-wrapper</li>
+			</ul>
 			<p>Note: not yet published, due to time constraints...</p>
+			</section>
+			<section>
+			<h1>Contributions 2/2</h1>
 			<ul>
 				<li>Missing methods in DefinitelyTyped Rx definitions (pullrequestmaterial.d.ts)</li>
-				<li>Partial Reveal.js (this presentation) Rx-wrapper</li>
+				<li>Own custom operators: <ul>
 				<li>Tupling:<pre><code data-trim class="ts">Rx.Observable&lt;T&gt;.tupled(): T[]</code></pre></li>
 				<li>Recursive scan:
 <pre><code data-trim class="ts">Rx.Observable&lt;T&gt;.flatScan&lt;R&gt;(
@@ -312,8 +321,9 @@ shipAndBullets.withLatestFrom(
 	resultSelector: (val: R) => Observable&lt;T&gt;
 ): Observable&lt;T&gt;
 // Beware of returning Rx.Observable.return(a: T)</code></pre>
-				</li>
+				</li></ul></li>
 			</ul>
+			</section>
 		</section>
 
 		<section>
