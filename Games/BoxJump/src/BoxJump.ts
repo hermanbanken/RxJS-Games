@@ -2,6 +2,7 @@
 /// <reference path="../../ts/rx-jquery/rx.jquery.d.ts" />
 /// <reference path="../../ts/math.ts" />
 /// <reference path="../../ts/rx.tupled.ts" />
+/// <reference path="../../ts/rx-reveal.ts" />
 /// <reference path="../../ts/rx.requestanimationframescheduler.ts" />
 
 var levels = [
@@ -20,50 +21,62 @@ module BoxJump {
 		public level: number = 0;
 
 		public player: Player;
-		constructor(public ctx: CanvasRenderingContext2D) {
-			Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame)
-				// Get time delta
-				.map(_ => new Date().getTime()).tupled().map((p: number[]) => p[1] - p[0])
-				// Update game state
-				.withLatestFrom(this.spaces, (t,s) => { return { time: t, space: s }; })
-				.scan(
-					new BoxJump.Player(new math.Box(new math.Point2D(0,0), 20, 20), null),
-					(s, t) => s.update(t.time, t.space)
-				)
-				.takeWhile(p => p.box.centre.x < this.ctx.canvas.width)
-				.doWhile(() => ++this.level < levels.length)
-				.takeWhile(_ => this.level >= 0)
-				.subscribe(p => {
-					try {
-						this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-						this.ctx.fillStyle = "rgba(255,0,0,1)";
-						p.box.draw(this.ctx);
-						var dead = false;
-						if(levels[this.level])
-						for(var bi in levels[this.level]){
-							levels[this.level][bi].draw(this.ctx);
-							dead = dead || p.box.intersects(levels[this.level][bi]);	
-						}
-						if(dead){
-							this.level = -1;	
-						}
-						var txt = "Level: "+this.level;
-						this.ctx.fillText(txt, this.ctx.canvas.width - this.ctx.measureText(txt).width - 10, 15);
-					} catch (e){
-						console.error("Subscribe error! %s", e);
-					}
-				}, e => console.error(e), () => {
-					var txt = this.level > 0 ? "You WON!" : "You LOST!";
-					this.ctx.font = "30px Arial";
-					this.ctx.fillText(txt, this.ctx.canvas.width/2 - this.ctx.measureText(txt).width/2, this.ctx.canvas.height/2);
-				});
+		constructor(public ctx: CanvasRenderingContext2D) {}
+
+		public run(){
+            this.level = 0;
+            var l = Rx.Observable.interval(1000 / 30, Rx.Scheduler.requestAnimationFrame)
+            	// Get time delta
+                .map(_ => new Date().getTime()).tupled().map((p: number[]) => p[1] - p[0])
+            	// Update game state
+                .withLatestFrom(this.spaces, (t, s) => { return { time: t, space: s }; })
+                .scan(
+                	new BoxJump.Player(new math.Box(new math.Point2D(0, 0), 20, 20), null),
+                	(s, t) => s.update(t.time, t.space)
+                )
+                .takeWhile(p => p.box.centre.x < this.ctx.canvas.width)
+                .doWhile(() => ++this.level < levels.length)
+                .takeWhile(_ => this.level >= 0)
+                .tap(p => {
+	                try {
+	                    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+	                    this.ctx.fillStyle = "rgba(255,0,0,1)";
+	                    p.box.draw(this.ctx);
+	                    var dead = false;
+	                    if (levels[this.level])
+	                        for (var bi in levels[this.level]) {
+	                            levels[this.level][bi].draw(this.ctx);
+	                            dead = dead || p.box.intersects(levels[this.level][bi]);
+	                        }
+	                    if (dead) {
+	                        this.level = -1;
+	                    }
+                        var txt = "Level: " + this.level;
+                        this.ctx.font = "12px Arial";
+                        this.ctx.fillText(txt, this.ctx.canvas.width - this.ctx.measureText(txt).width - 10, 15);
+	                } catch (e) {
+	                    console.error("Subscribe error! %s", e);
+	                }
+            	}, e => console.error(e), () => {
+                    var txt = this.level > 0 ? "You WON!" : "You LOST!";
+                    this.ctx.font = "30px Arial";
+                    this.ctx.fillText(txt, this.ctx.canvas.width / 2 - this.ctx.measureText(txt).width / 2, this.ctx.canvas.height / 2);
+                });
+
+            return this.singlespace.flatMap(_ => l).map(_ => 1)
+                .concat(this.singlespace.map(_ => {
+	                this.level = 0;
+	                return 1;
+            	})).repeat();
+                
 		}
 
-		public spaces = $(document.body)
+        public spaces = $(document.body)
 			.onAsObservable("keydown keyup")
 			.filter(e => e['keyCode'] === 32)
 			.map(e => e.type === 'keydown')
 			.startWith(false);
+        public singlespace = this.spaces.skip(1).take(1);
 	}
 
 	export class Player{
@@ -101,7 +114,8 @@ module BoxJump {
 	}
 }
 
-$("#boxjump").clickAsObservable().take(1).subscribe(e => {
-	var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>e.target).getContext("2d");
-	var game = new BoxJump.Game(ctx);
-});
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-boxjump').get().length > 0, s => {
+    console.log("BoxJump");
+    var canvas = <HTMLCanvasElement> $("#boxjump").get(0);
+    return new BoxJump.Game(canvas.getContext("2d")).run();
+}).subscribe(e => { });
