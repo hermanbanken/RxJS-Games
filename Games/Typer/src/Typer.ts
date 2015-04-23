@@ -15,7 +15,13 @@ module Typer {
 			"Or at least",
 			"It WAS peaceful",
 			"We are under attack",
-			"and we need your help"
+			"and we need your help",
+			"A hostal alien race",
+			"is invading our planet",
+			"You should prevent the",
+			"ship to reach surface",
+			"or we will all DIE",
+			"All our hopes are on you"
 		];		
 
 		run() {
@@ -115,13 +121,21 @@ module Typer {
 						ctx.font = "20px silkscreennormal";
 						var text = state.sentence
                     	this.ctx.fillText(text, this.ctx.canvas.width/2 - this.ctx.measureText(text).width/2, 355);
-					}
+					},
+					error => {},
+					() => {
+						console.log("DONE");
+						var ctx = this.ctx;
+						ctx.font = "20px silkscreennormal";
+						var text = ":( They depended on you"
+	                	this.ctx.fillText(text, this.ctx.canvas.width/2 - this.ctx.measureText(text).width/2, 200);
+	                }
 				);
 		}
 	}
 }
 
-Reveal.forSlide(s => s.currentSlide.id == 'g-typer', s => {
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-typer').get().length > 0, s => {
     var canvas = <HTMLCanvasElement> $("#typer", s.currentSlide).get(0);
    
     return new Typer.Game(canvas.getContext("2d")).run();
