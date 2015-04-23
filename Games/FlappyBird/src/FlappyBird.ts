@@ -23,7 +23,7 @@ module Flappy {
 	var canvas_height = 0;
 	var speed = 100;
 	var default_speed = 100;
-	var debug = false;
+	export var debug = false;
 
 	interface Stage {
 		draw(ctx: CanvasRenderingContext2D): void;
@@ -371,7 +371,9 @@ module Flappy {
 	export class Game {
 		public level: number = 0;
 		
-		constructor(public ctx: CanvasRenderingContext2D) {
+        constructor(public ctx: CanvasRenderingContext2D){}
+
+		run() {
 			var imageLoaded = Rx.Observable.merge(
 				Rx.Observable.from(graphics.trees).flatMap(t => new Img(t).observable.take(1)),
 				Rx.Observable.from(graphics.clouds).flatMap(t => new Img(t).observable.take(1)),
@@ -385,14 +387,14 @@ module Flappy {
 			}).last().tap(registry => {
 				images = registry;
 			});
-			canvas_height = ctx.canvas.height;
+			canvas_height = this.ctx.canvas.height;
 
-			imageLoaded.select(_ => new Start())
+			return imageLoaded.select(_ => new Start())
 			.flatScan<Stage,Stage>(
 				s => { s.draw(this.ctx); return s.run(this).doAction(_ => _.draw(this.ctx)).last() }, 
 				s => Rx.Observable.just(s)
 			)
-			.subscribe(
+			.tap(
 				s => s.draw(this.ctx),
 				e => console.error(e), 
 				() => console.log("Completed game")
@@ -400,13 +402,20 @@ module Flappy {
 		}
 
 		// Mouse events
-		public ups = $(window).onAsObservable("keyup").filter(e => (e['keyCode'] == 38)).map(_ => new Date().getTime());
+        public ups = $(window).keyupAsObservable().filter(e => e.keyCode == 32 || e.keyCode == 38).map(_ => new Date().getTime());
 		public down = $(this.ctx.canvas).onAsObservable("mousedown");
-		public up = $(window).onAsObservable("mouseup");
+        public up = $(window).onAsObservable("mouseup");
 	}
 }
 
-Rx.Observable.just($("#flappy").get(0)).take(1).subscribe(c => {
-	var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
-	var game = new Flappy.Game(ctx);
-});
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-mekelbird').get().length > 0, s => {
+    console.log("Flappy");
+    var canvas = <HTMLCanvasElement> $("#flappy").get(0);
+    return Rx.Observable.using(
+    	() => $(window).keyupAsObservable().filter(k => k.keyCode === "D".charCodeAt(0)).subscribe(_ => {
+            console.log("Flipping debug");
+            Flappy.debug = !Flappy.debug;	
+		}),
+    	_ => new Flappy.Game(canvas.getContext("2d")).run()
+    );
+}).subscribe(e => { });
