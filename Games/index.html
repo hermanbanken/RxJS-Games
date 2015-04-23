@@ -272,6 +272,21 @@ class AnimatedSprite extends Sprite {
 			<canvas id="minesweeper" width="300" height="300" style="display: inline-block;background: white" oncontextmenu="return false"></canvas>
 		</section>
 
+		<section>
+			<h1>Lessons learned</h1>
+			<ul>
+				<li>Drawing in .subscribe is fine, until you want to animate</li>
+				<li>Animation difficult in general (FP, anyone?)</li>
+				<li>Mostly: <pre><code data-trim class="ts">var deltaT
+	.witLatestFrom(some inputs)
+	.scan(State.initial(), (s: State, i: Inputs) => State)
+	.subscribe(draw)</code></pre></li>
+				<li>Add .retry() if you throw Error's on death</li>
+				<li>Add .replay() if you complete on Win-state</li>
+				<li>Add an outer-sequence to deal with levels</li>
+			</ul>
+		</section>
+
 	</div>
 </div>
 
