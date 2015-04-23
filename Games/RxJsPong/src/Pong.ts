@@ -104,6 +104,7 @@ module Pong {
 
         leftPaddleObservable = $(document.body).onAsObservable("keyup keydown")
             .filter(ke => this.leftPaddleKeys.indexOf(ke['keyCode']) != -1)
+            .do(e => {e.preventDefault(); e.stopPropagation()})
             .map(ke => {
                 if(ke.type == 'keyup') return 0;
                 if(ke['keyCode'] == this.leftPaddleKeys[0]) return 1;
@@ -112,13 +113,17 @@ module Pong {
 
         rightPaddleObservable = $(document.body).onAsObservable("keyup keydown")
             .filter(ke => this.rightPaddleKeys.indexOf(ke['keyCode']) != -1)
+            .do(e => {e.preventDefault(); e.stopPropagation()})
             .map(ke => {
                 if(ke.type == 'keyup') return 0;
                 if(ke['keyCode'] == this.rightPaddleKeys[0]) return 1;
                 if(ke['keyCode'] == this.rightPaddleKeys[1]) return -1;
             });
 
-        constructor(public ctx: CanvasRenderingContext2D) {
+        constructor() {
+        }
+
+        start(ctx: CanvasRenderingContext2D) {
             ctx.fillStyle = 'white';
             var t = Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame);
 
@@ -165,8 +170,8 @@ module Pong {
                     }
                 );
 
-            $(ctx.canvas).onAsObservable("click").take(1).flatMap(_ => scanned)
-                .subscribe(state => {
+            return scanned
+                .tap(state => {
                     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
                     state.left.draw(ctx);
                     state.right.draw(ctx);
@@ -178,14 +183,13 @@ module Pong {
                     ctx.fillText(leftText, ctx.canvas.width/2 - 40 - ctx.measureText(leftText).width, 65);
                     ctx.fillText(rightText, ctx.canvas.width/2 + 40, 65);
                 });
-
-            Ball.initial().draw(ctx);
         }
 
     }
 }
 
-Rx.Observable.just($("#pong").get(0)).take(1).subscribe(c => {
-    var ctx: CanvasRenderingContext2D = (<HTMLCanvasElement>c).getContext("2d");
-    var game = new Pong.Game(ctx);
-});
+Reveal.forSlide(s => $(s.currentSlide).closest('#g-pong').get().length > 0, s => {
+    console.log("Pong");
+    var canvas = <HTMLCanvasElement> $("#pong").get(0);
+    return new Pong.Game().start(canvas.getContext("2d"));
+}).subscribe(e => {});

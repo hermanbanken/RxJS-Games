@@ -51,6 +51,7 @@ module Typer {
 						}
 					}
 				).share()
+				
 				var bullet = gameEvents.filter(state => state.shoot).map(_ => 1)
 
 				var t = Rx.Observable.interval(1000/30, Rx.Scheduler.requestAnimationFrame);

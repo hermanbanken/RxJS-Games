@@ -27,6 +27,9 @@
 			<h1>10 Games in <span style="text-transform:none;">RxJS</span></h1>
 			<img class="normal" src="presentation/Rx_Logo_512.png" />
 			<p>
+				Live demo: <a href="http://fptudelft.github.io/RxJS-Games/Games/">http://fptudelft.github.io/RxJS-Games/Games/</a>
+			</p>
+			<p>
 				<small>By
 				<a href="https://github.com/hermanbanken">Herman Banken</a> / 
 				<a href="https://github.com/jgadelange">Jeffrey de Lange</a>
@@ -251,8 +254,32 @@ class AnimatedSprite extends Sprite {
 		</section>
 
 		<section id="g-typer">
-			<h1>Typeria</h1>
-			<canvas id="typer" width="320" height="400" style="display: inline-block;background: white"></canvas>
+			<section>
+				<h1>Typeria</h1>
+				<canvas id="typer" width="320" height="400" style="display: inline-block;background: white"></canvas>
+			</section>
+			<section>
+				<pre><code style="max-height:500px" data-trim class="ts">function new_bullet(id:number): Rx.Observable<number[]> {
+	return timeEvents.scan(
+		300, (p, e) => p - e.dt * Game.bulletSpeed
+	).takeWhile(p => p > 0).map(p => [id, p])
+}
+var bullets = gameEvents.filter(state => state.shoot)
+	.map((_, i) => new_bullet(i)).mergeAll();
+
+var shipAndBullets = timeEvents.withLatestFrom(
+	bullets.buffer(timeEvents),
+	(x, y) => ({dt:x.dt, bullets:y})
+).scan(
+	{shipPostion: 0, bullets: [], lastHit:-1},
+	[update ship position and check collisions]
+)
+
+shipAndBullets.withLatestFrom(
+	gameEvents,
+	(shipBullets, state) => ({state: state, shipBullets:shipBullets})
+).tap(x => draw(x));</code></pre>
+			</section>
 		</section>
 
 		<section id="g-flow">
