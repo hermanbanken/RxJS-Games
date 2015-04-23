@@ -273,6 +273,23 @@ class AnimatedSprite extends Sprite {
 		</section>
 
 		<section>
+			<h1>Contributions</h1>
+			<p>Note: not yet published, due to time constraints...</p>
+			<ul>
+				<li>Missing methods in DefinitelyTyped Rx definitions (pullrequestmaterial.d.ts)</li>
+				<li>Partial Reveal.js (this presentation) Rx-wrapper</li>
+				<li>Tupling:<pre><code data-trim class="ts">Rx.Observable&lt;T&gt;.tupled(): T[]</code></pre></li>
+				<li>Recursive scan:
+<pre><code data-trim class="ts">Rx.Observable&lt;T&gt;.flatScan&lt;R&gt;(
+	iterator: (prev: T) => Observable&lt;R&gt;, 
+	resultSelector: (val: R) => Observable&lt;T&gt;
+): Observable&lt;T&gt;
+// Beware of returning Rx.Observable.return(a: T)</code></pre>
+				</li>
+			</ul>
+		</section>
+
+		<section>
 			<h1>Lessons learned</h1>
 			<ul>
 				<li>Drawing in .subscribe is fine, until you want to animate</li>
